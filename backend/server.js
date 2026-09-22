@@ -16,7 +16,11 @@ const app = express();
 connectDB();
 
 // Middleware
-app.use(cors());
+app.use(
+  cors({
+    origin: "https://job-board-flax-mu.vercel.app",
+  })
+);
 app.use(express.json());
 
 app.use("/api/auth", authRoutes);
