@@ -11,6 +11,10 @@ function EmployerDashboard() {
   const [error, setError] = useState("");
   const [selectedJob, setSelectedJob] = useState(null);
 
+  const user = JSON.parse(
+    localStorage.getItem("user") || "null"
+  );
+
   const fetchMyJobs = async () => {
     try {
       setLoading(true);
@@ -30,7 +34,7 @@ function EmployerDashboard() {
         },
       });
 
-      setJobs(response.data.jobs);
+      setJobs(response.data.jobs || []);
     } catch (error) {
       console.error("Error fetching jobs:", error);
 
@@ -65,7 +69,7 @@ function EmployerDashboard() {
 
       setApplicants((previous) => ({
         ...previous,
-        [jobId]: response.data.applications,
+        [jobId]: response.data.applications || [],
       }));
 
       setSelectedJob(jobId);
@@ -123,11 +127,19 @@ function EmployerDashboard() {
     }
   };
 
+  const handleLogout = () => {
+    localStorage.removeItem("token");
+    localStorage.removeItem("user");
+
+    navigate("/login");
+    window.location.reload();
+  };
+
   useEffect(() => {
-    // This is an intentional data-fetching effect.
-    // eslint-disable-next-line react-hooks/set-state-in-effect
-    fetchMyJobs();
-  }, []);
+  // This is an intentional data-fetching effect.
+  // eslint-disable-next-line react-hooks/set-state-in-effect
+  fetchMyJobs();
+}, []);
 
   return (
     <div className="dashboard-page">
@@ -143,14 +155,51 @@ function EmployerDashboard() {
           flexWrap: "wrap",
         }}
       >
-        <h1>Employer Dashboard</h1>
+        <div>
+          <h1>Employer Dashboard</h1>
 
-        <button
-          type="button"
-          onClick={() => navigate("/post-job")}
+          {user?.name && (
+            <p>
+              Welcome, <strong>{user.name}</strong> 👋
+            </p>
+          )}
+        </div>
+
+        <div
+          style={{
+            display: "flex",
+            gap: "10px",
+            flexWrap: "wrap",
+          }}
         >
-          + Post a Job
-        </button>
+          <button
+            type="button"
+            onClick={() => navigate("/")}
+          >
+            Home
+          </button>
+
+          <button
+            type="button"
+            onClick={() => navigate("/jobs")}
+          >
+            Browse Jobs
+          </button>
+
+          <button
+            type="button"
+            onClick={() => navigate("/post-job")}
+          >
+            + Post a Job
+          </button>
+
+          <button
+            type="button"
+            onClick={handleLogout}
+          >
+            Logout
+          </button>
+        </div>
       </div>
 
       {/* Loading */}
@@ -169,7 +218,9 @@ function EmployerDashboard() {
       {!loading &&
         !error &&
         jobs.length === 0 && (
-          <div>
+          <section className="dashboard-section">
+            <h2>No Job Listings Yet</h2>
+
             <p>
               You have not posted any jobs yet.
             </p>
@@ -180,7 +231,7 @@ function EmployerDashboard() {
             >
               + Post Your First Job
             </button>
-          </div>
+          </section>
         )}
 
       {/* Jobs */}
@@ -215,23 +266,56 @@ function EmployerDashboard() {
 
                 <p>
                   <strong>Salary:</strong>{" "}
-                  {job.salary}
+                  {job.salary || "Not specified"}
                 </p>
 
-                {/* Applicants Button */}
-                <button
-                  type="button"
-                  onClick={() =>
-                    fetchApplicants(job._id)
-                  }
+                <p>
+                  <strong>Posted:</strong>{" "}
+                  {job.createdAt
+                    ? new Date(
+                        job.createdAt
+                      ).toLocaleDateString()
+                    : "N/A"}
+                </p>
+
+                <div
+                  style={{
+                    display: "flex",
+                    gap: "10px",
+                    flexWrap: "wrap",
+                    marginTop: "15px",
+                  }}
                 >
-                  View Applicants
-                </button>
+                  <button
+                    type="button"
+                    onClick={() =>
+                      fetchApplicants(job._id)
+                    }
+                  >
+                    View Applicants
+                  </button>
+
+                  <button
+                    type="button"
+                    onClick={() =>
+                      navigate(
+                        `/jobs/${job._id}`
+                      )
+                    }
+                  >
+                    View Job
+                  </button>
+                </div>
 
                 {/* Applicants */}
                 {selectedJob === job._id &&
                   applicants[job._id] && (
-                    <div className="applicants-section">
+                    <div
+                      className="applicants-section"
+                      style={{
+                        marginTop: "20px",
+                      }}
+                    >
 
                       <h3>Applicants</h3>
 
@@ -245,7 +329,9 @@ function EmployerDashboard() {
                           (application) => (
                             <div
                               className="application-card"
-                              key={application._id}
+                              key={
+                                application._id
+                              }
                             >
 
                               <h4>
@@ -269,10 +355,11 @@ function EmployerDashboard() {
                                 <strong>
                                   Status:
                                 </strong>{" "}
-                                {application.status}
+                                {
+                                  application.status
+                                }
                               </p>
 
-                              {/* Application Status */}
                               <select
                                 value={
                                   application.status
@@ -302,7 +389,6 @@ function EmployerDashboard() {
                                 </option>
                               </select>
 
-                              {/* Resume */}
                               {application.resume && (
                                 <p>
                                   <strong>
