@@ -1,4 +1,6 @@
 const mongoose = require("mongoose");
+const fs = require("fs");
+const path = require("path");
 const Application = require("../models/Application");
 const Job = require("../models/Job");
 const User = require("../models/User");
@@ -263,9 +265,104 @@ if (candidate) {
   }
 };
 
+const downloadResume = async (req, res) => {
+  try {
+    // Only employers can download resumes
+    if (req.user.role !== "Employer") {
+      return res.status(403).json({
+        message: "Only employers can download resumes",
+      });
+    }
+
+    const { applicationId } = req.params;
+
+    // Validate application ID
+    if (!mongoose.Types.ObjectId.isValid(applicationId)) {
+      return res.status(400).json({
+        message: "Invalid application ID",
+      });
+    }
+
+    // Find application and populate job
+    const application = await Application.findById(
+      applicationId
+    ).populate("job");
+
+    if (!application) {
+      return res.status(404).json({
+        message: "Application not found",
+      });
+    }
+
+    // Check that employer owns this job
+    if (
+      application.job.employer.toString() !==
+      req.user.userId
+    ) {
+      return res.status(403).json({
+        message:
+          "You are not authorized to download this resume",
+      });
+    }
+
+    // Check resume exists
+    if (!application.resume) {
+      return res.status(404).json({
+        message: "Resume not found",
+      });
+    }
+
+    // Resume location
+    const resumePath = path.join(
+      __dirname,
+      "../uploads",
+      application.resume
+    );
+
+    // Check file exists
+    if (!fs.existsSync(resumePath)) {
+      return res.status(404).json({
+        message:
+          "Resume file is no longer available",
+      });
+    }
+
+    // Download resume
+    res.download(
+      resumePath,
+      application.resume,
+      (error) => {
+        if (error) {
+          console.error(
+            "Resume download error:",
+            error
+          );
+
+          if (!res.headersSent) {
+            res.status(500).json({
+              message:
+                "Unable to download resume",
+            });
+          }
+        }
+      }
+    );
+  } catch (error) {
+    console.error(
+      "Download resume error:",
+      error
+    );
+
+    res.status(500).json({
+      message: "Server error",
+    });
+  }
+};
+
 module.exports = {
   applyForJob,
   getMyApplications,
   getJobApplicants,
   updateApplicationStatus,
+  downloadResume,
 };

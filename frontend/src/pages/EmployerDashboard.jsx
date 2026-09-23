@@ -134,6 +134,64 @@ function EmployerDashboard() {
     }
   };
 
+  const downloadResume = async (
+  applicationId,
+  fileName
+) => {
+  try {
+    setError("");
+
+    const token = localStorage.getItem("token");
+
+    if (!token) {
+      setError("Please login as an employer.");
+      return;
+    }
+
+    const response = await API.get(
+      `/applications/${applicationId}/resume`,
+      {
+        headers: {
+          Authorization: `Bearer ${token}`,
+        },
+        responseType: "blob",
+      }
+    );
+
+    const blob = new Blob([
+      response.data,
+    ]);
+
+    const url =
+      window.URL.createObjectURL(blob);
+
+    const link =
+      document.createElement("a");
+
+    link.href = url;
+    link.download =
+      fileName || "resume";
+
+    document.body.appendChild(link);
+
+    link.click();
+
+    link.remove();
+
+    window.URL.revokeObjectURL(url);
+  } catch (error) {
+    console.error(
+      "Resume download error:",
+      error
+    );
+
+    setError(
+      error.response?.data?.message ||
+        "Unable to download resume."
+    );
+  }
+};
+
   useEffect(() => {
     // Intentional API data-fetching effect.
     // eslint-disable-next-line react-hooks/set-state-in-effect
@@ -457,14 +515,40 @@ function EmployerDashboard() {
 
                                 </div>
 
-                                {application.resume && (
-                                  <p className="applicant-resume">
-                                    📄{" "}
-                                    {
-                                      application.resume
-                                    }
-                                  </p>
-                                )}
+                              {application.resume && (
+  <div className="applicant-resume">
+
+    <div className="resume-file">
+      <span className="resume-icon">
+        📄
+      </span>
+
+      <div>
+        <span className="detail-label">
+          Resume
+        </span>
+
+        <span className="detail-value">
+          {application.resume}
+        </span>
+      </div>
+    </div>
+
+    <button
+      type="button"
+      className="resume-download-button"
+      onClick={() =>
+        downloadResume(
+          application._id,
+          application.resume
+        )
+      }
+    >
+      ↓ Download Resume
+    </button>
+
+  </div>
+)}
 
                               </div>
                             )

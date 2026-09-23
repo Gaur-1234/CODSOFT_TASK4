@@ -5,6 +5,7 @@ const {
   getMyApplications,
   getJobApplicants,
   updateApplicationStatus,
+  downloadResume,
 } = require("../controllers/applicationController");
 
 const protect = require("../middleware/authMiddleware");
@@ -29,6 +30,11 @@ router.patch(
   "/:applicationId/status",
   protect,
   updateApplicationStatus
+);
+router.get(
+  "/:applicationId/resume",
+  protect,
+  downloadResume
 );
 
 module.exports = router;

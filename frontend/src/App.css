@@ -2046,3 +2046,114 @@ button {
     flex-wrap: wrap;
   }
 }
+
+/* =========================================
+   RESUME DOWNLOAD
+========================================= */
+
+.applicant-resume {
+  margin-top: 14px;
+  padding-top: 14px;
+
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+
+  gap: 16px;
+
+  border-top: 1px solid
+    rgba(255, 255, 255, 0.06);
+}
+
+.resume-file {
+  display: flex;
+  align-items: center;
+
+  gap: 10px;
+
+  min-width: 0;
+}
+
+.resume-icon {
+  width: 36px;
+  height: 36px;
+
+  display: flex;
+  align-items: center;
+  justify-content: center;
+
+  background: rgba(59, 130, 246, 0.1);
+
+  border: 1px solid
+    rgba(59, 130, 246, 0.15);
+
+  border-radius: 8px;
+
+  font-size: 17px;
+}
+
+.resume-file > div {
+  display: flex;
+  flex-direction: column;
+
+  gap: 3px;
+
+  min-width: 0;
+}
+
+.resume-file .detail-value {
+  max-width: 300px;
+
+  overflow: hidden;
+
+  text-overflow: ellipsis;
+
+  white-space: nowrap;
+}
+
+.resume-download-button {
+  flex-shrink: 0;
+
+  padding: 9px 13px;
+
+  color: #dbeafe;
+
+  background: rgba(37, 99, 235, 0.1);
+
+  border: 1px solid
+    rgba(59, 130, 246, 0.22);
+
+  border-radius: 8px;
+
+  font-size: 12px;
+  font-weight: 700;
+
+  cursor: pointer;
+
+  transition:
+    background 0.2s ease,
+    border-color 0.2s ease,
+    transform 0.2s ease;
+}
+
+.resume-download-button:hover {
+  color: white;
+
+  background: #2563eb;
+
+  border-color: #3b82f6;
+
+  transform: translateY(-1px);
+}
+
+@media (max-width: 600px) {
+  .applicant-resume {
+    align-items: flex-start;
+
+    flex-direction: column;
+  }
+
+  .resume-download-button {
+    width: 100%;
+  }
+}
