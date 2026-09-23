@@ -1,7 +1,10 @@
 import { useEffect, useState } from "react";
+import { useNavigate } from "react-router-dom";
 import API from "../services/api";
 
 function EmployerDashboard() {
+  const navigate = useNavigate();
+
   const [jobs, setJobs] = useState([]);
   const [applicants, setApplicants] = useState({});
   const [loading, setLoading] = useState(true);
@@ -128,27 +131,63 @@ function EmployerDashboard() {
 
   return (
     <div className="dashboard-page">
-      <h1>Employer Dashboard</h1>
 
-      {loading && <p>Loading your jobs...</p>}
+      {/* Dashboard Header */}
+      <div
+        style={{
+          display: "flex",
+          justifyContent: "space-between",
+          alignItems: "center",
+          gap: "16px",
+          marginBottom: "24px",
+          flexWrap: "wrap",
+        }}
+      >
+        <h1>Employer Dashboard</h1>
 
+        <button
+          type="button"
+          onClick={() => navigate("/post-job")}
+        >
+          + Post a Job
+        </button>
+      </div>
+
+      {/* Loading */}
+      {loading && (
+        <p>Loading your jobs...</p>
+      )}
+
+      {/* Error */}
       {error && (
         <p style={{ color: "red" }}>
           {error}
         </p>
       )}
 
+      {/* No Jobs */}
       {!loading &&
         !error &&
         jobs.length === 0 && (
-          <p>
-            You have not posted any jobs yet.
-          </p>
+          <div>
+            <p>
+              You have not posted any jobs yet.
+            </p>
+
+            <button
+              type="button"
+              onClick={() => navigate("/post-job")}
+            >
+              + Post Your First Job
+            </button>
+          </div>
         )}
 
+      {/* Jobs */}
       {!loading &&
         jobs.length > 0 && (
           <section className="dashboard-section">
+
             <h2>My Job Listings</h2>
 
             {jobs.map((job) => (
@@ -156,6 +195,7 @@ function EmployerDashboard() {
                 className="application-card"
                 key={job._id}
               >
+
                 <h3>{job.title}</h3>
 
                 <p>
@@ -178,6 +218,7 @@ function EmployerDashboard() {
                   {job.salary}
                 </p>
 
+                {/* Applicants Button */}
                 <button
                   type="button"
                   onClick={() =>
@@ -187,9 +228,11 @@ function EmployerDashboard() {
                   View Applicants
                 </button>
 
+                {/* Applicants */}
                 {selectedJob === job._id &&
                   applicants[job._id] && (
                     <div className="applicants-section">
+
                       <h3>Applicants</h3>
 
                       {applicants[job._id].length ===
@@ -204,6 +247,7 @@ function EmployerDashboard() {
                               className="application-card"
                               key={application._id}
                             >
+
                               <h4>
                                 {
                                   application
@@ -228,6 +272,7 @@ function EmployerDashboard() {
                                 {application.status}
                               </p>
 
+                              {/* Application Status */}
                               <select
                                 value={
                                   application.status
@@ -257,6 +302,7 @@ function EmployerDashboard() {
                                 </option>
                               </select>
 
+                              {/* Resume */}
                               {application.resume && (
                                 <p>
                                   <strong>
@@ -267,16 +313,21 @@ function EmployerDashboard() {
                                   }
                                 </p>
                               )}
+
                             </div>
                           )
                         )
                       )}
+
                     </div>
                   )}
+
               </div>
             ))}
+
           </section>
         )}
+
     </div>
   );
 }
