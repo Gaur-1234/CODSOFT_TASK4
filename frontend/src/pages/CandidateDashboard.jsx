@@ -55,181 +55,247 @@ function CandidateDashboard() {
     }
   };
 
-  const handleLogout = () => {
-    localStorage.removeItem("token");
-    localStorage.removeItem("user");
-
-    navigate("/");
-    window.location.reload();
-  };
-
-useEffect(() => {
-  // This is an intentional data-fetching effect.
-  // eslint-disable-next-line react-hooks/set-state-in-effect
-  fetchApplications();
-}, []);
+  useEffect(() => {
+    // Intentional API data-fetching effect.
+    // eslint-disable-next-line react-hooks/set-state-in-effect
+    fetchApplications();
+  }, []);
 
   return (
-    <div className="dashboard-page">
+    <main className="dashboard-page">
 
-      {/* Dashboard Header */}
-      <div
-        style={{
-          display: "flex",
-          justifyContent: "space-between",
-          alignItems: "center",
-          gap: "16px",
-          marginBottom: "24px",
-          flexWrap: "wrap",
-        }}
-      >
+      {/* Dashboard Heading */}
+      <div className="dashboard-heading">
+
         <div>
+          <span className="dashboard-eyebrow">
+            Candidate Portal
+          </span>
+
           <h1>Candidate Dashboard</h1>
 
-          {user?.name && (
-            <p>
-              Welcome, <strong>{user.name}</strong> 👋
-            </p>
-          )}
+          <p>
+            Welcome back,{" "}
+            <strong>
+              {user?.name || "Candidate"}
+            </strong>{" "}
+            👋
+          </p>
         </div>
 
-        <div
-          style={{
-            display: "flex",
-            gap: "10px",
-            flexWrap: "wrap",
-          }}
+        <button
+          type="button"
+          className="dashboard-primary-button"
+          onClick={() => navigate("/jobs")}
         >
-          <button
-            type="button"
-            onClick={() => navigate("/")}
-          >
-            Home
-          </button>
+          Browse Jobs
+        </button>
 
-          <button
-            type="button"
-            onClick={() => navigate("/jobs")}
-          >
-            Browse Jobs
-          </button>
-
-          <button
-            type="button"
-            onClick={handleLogout}
-          >
-            Logout
-          </button>
-        </div>
       </div>
 
       {/* Applications */}
       <section className="dashboard-section">
 
-        <h2>My Applications</h2>
+        <div className="section-heading">
+          <div>
+            <h2>My Applications</h2>
+
+            <p>
+              Track the jobs you have applied for.
+            </p>
+          </div>
+
+          <span className="application-count">
+            {applications.length}{" "}
+            {applications.length === 1
+              ? "Application"
+              : "Applications"}
+          </span>
+        </div>
 
         {/* Loading */}
         {loading && (
-          <p>Loading applications...</p>
+          <div className="dashboard-state">
+            <div className="loading-spinner"></div>
+            <p>Loading your applications...</p>
+          </div>
         )}
 
         {/* Error */}
-        {error && (
-          <p style={{ color: "red" }}>
-            {error}
-          </p>
+        {error && !loading && (
+          <div className="dashboard-error">
+            <strong>Something went wrong</strong>
+            <p>{error}</p>
+
+            <button
+              type="button"
+              onClick={fetchApplications}
+            >
+              Try Again
+            </button>
+          </div>
         )}
 
-        {/* No Applications */}
+        {/* Empty */}
         {!loading &&
           !error &&
           applications.length === 0 && (
-            <div>
+            <div className="dashboard-empty">
+
+              <div className="empty-icon">
+                💼
+              </div>
+
+              <h3>No applications yet</h3>
+
               <p>
-                You have not applied for any jobs yet.
+                Find a job that matches your skills
+                and start your application.
               </p>
 
               <button
                 type="button"
+                className="dashboard-primary-button"
                 onClick={() => navigate("/jobs")}
               >
-                Browse Jobs
+                Explore Jobs
               </button>
+
             </div>
           )}
 
-        {/* Application List */}
+        {/* Applications */}
         {!loading &&
           !error &&
           applications.length > 0 && (
             <div className="applications-list">
 
               {applications.map((application) => (
-                <div
+                <article
                   className="application-card"
                   key={application._id}
                 >
 
-                  <h3>
-                    {application.job?.title ||
-                      "Job Title"}
-                  </h3>
+                  <div className="application-card-top">
 
-                  <p>
-                    <strong>Company:</strong>{" "}
-                    {application.job?.company ||
-                      "N/A"}
-                  </p>
+                    <div>
+                      <span className="application-label">
+                        Application
+                      </span>
 
-                  <p>
-                    <strong>Location:</strong>{" "}
-                    {application.job?.location ||
-                      "N/A"}
-                  </p>
+                      <h3>
+                        {application.job?.title ||
+                          "Job Title"}
+                      </h3>
+                    </div>
 
-                  <p>
-                    <strong>Job Type:</strong>{" "}
-                    {application.job?.jobType ||
-                      "N/A"}
-                  </p>
+                    <span
+                      className={`status-badge status-${(
+                        application.status ||
+                        "Applied"
+                      )
+                        .toLowerCase()
+                        .replace(/\s+/g, "-")}`}
+                    >
+                      {application.status ||
+                        "Applied"}
+                    </span>
 
-                  <p>
-                    <strong>Applied On:</strong>{" "}
-                    {application.createdAt
-                      ? new Date(
-                          application.createdAt
-                        ).toLocaleDateString()
-                      : "N/A"}
-                  </p>
+                  </div>
 
-                  <p>
-                    <strong>Status:</strong>{" "}
-                    {application.status ||
-                      "Applied"}
-                  </p>
+                  <div className="application-details">
+
+                    <div className="detail-item">
+                      <span className="detail-label">
+                        Company
+                      </span>
+
+                      <span className="detail-value">
+                        {application.job?.company ||
+                          "N/A"}
+                      </span>
+                    </div>
+
+                    <div className="detail-item">
+                      <span className="detail-label">
+                        Location
+                      </span>
+
+                      <span className="detail-value">
+                        {application.job?.location ||
+                          "N/A"}
+                      </span>
+                    </div>
+
+                    <div className="detail-item">
+                      <span className="detail-label">
+                        Job Type
+                      </span>
+
+                      <span className="detail-value">
+                        {application.job?.jobType ||
+                          "N/A"}
+                      </span>
+                    </div>
+
+                    <div className="detail-item">
+                      <span className="detail-label">
+                        Applied On
+                      </span>
+
+                      <span className="detail-value">
+                        {application.createdAt
+                          ? new Date(
+                              application.createdAt
+                            ).toLocaleDateString(
+                              "en-IN",
+                              {
+                                day: "2-digit",
+                                month: "short",
+                                year: "numeric",
+                              }
+                            )
+                          : "N/A"}
+                      </span>
+                    </div>
+
+                  </div>
 
                   {application.resume && (
-                    <p>
-                      <strong>Resume:</strong>{" "}
-                      {application.resume}
-                    </p>
+                    <div className="resume-info">
+                      <span>📄</span>
+
+                      <div>
+                        <span className="detail-label">
+                          Resume
+                        </span>
+
+                        <span className="detail-value">
+                          {application.resume}
+                        </span>
+                      </div>
+                    </div>
                   )}
 
-                  {/* View Job */}
-                  {application.job?._id && (
-                    <button
-                      type="button"
-                      onClick={() =>
-                        navigate(
-                          `/jobs/${application.job._id}`
-                        )
-                      }
-                    >
-                      View Job
-                    </button>
-                  )}
+                  <div className="application-actions">
 
-                </div>
+                    {application.job?._id && (
+                      <button
+                        type="button"
+                        className="dashboard-primary-button"
+                        onClick={() =>
+                          navigate(
+                            `/jobs/${application.job._id}`
+                          )
+                        }
+                      >
+                        View Job
+                      </button>
+                    )}
+
+                  </div>
+
+                </article>
               ))}
 
             </div>
@@ -237,7 +303,7 @@ useEffect(() => {
 
       </section>
 
-    </div>
+    </main>
   );
 }
 

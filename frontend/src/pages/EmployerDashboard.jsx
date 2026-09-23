@@ -28,15 +28,21 @@ function EmployerDashboard() {
         return;
       }
 
-      const response = await API.get("/jobs/my-jobs", {
-        headers: {
-          Authorization: `Bearer ${token}`,
-        },
-      });
+      const response = await API.get(
+        "/jobs/my-jobs",
+        {
+          headers: {
+            Authorization: `Bearer ${token}`,
+          },
+        }
+      );
 
       setJobs(response.data.jobs || []);
     } catch (error) {
-      console.error("Error fetching jobs:", error);
+      console.error(
+        "Error fetching jobs:",
+        error
+      );
 
       setError(
         error.response?.data?.message ||
@@ -69,7 +75,8 @@ function EmployerDashboard() {
 
       setApplicants((previous) => ({
         ...previous,
-        [jobId]: response.data.applications || [],
+        [jobId]:
+          response.data.applications || [],
       }));
 
       setSelectedJob(jobId);
@@ -127,294 +134,355 @@ function EmployerDashboard() {
     }
   };
 
-  const handleLogout = () => {
-    localStorage.removeItem("token");
-    localStorage.removeItem("user");
-
-    navigate("/login");
-    window.location.reload();
-  };
-
   useEffect(() => {
-  // This is an intentional data-fetching effect.
-  // eslint-disable-next-line react-hooks/set-state-in-effect
-  fetchMyJobs();
-}, []);
+    // Intentional API data-fetching effect.
+    // eslint-disable-next-line react-hooks/set-state-in-effect
+    fetchMyJobs();
+  }, []);
 
   return (
-    <div className="dashboard-page">
+    <main className="dashboard-page">
 
-      {/* Dashboard Header */}
-      <div
-        style={{
-          display: "flex",
-          justifyContent: "space-between",
-          alignItems: "center",
-          gap: "16px",
-          marginBottom: "24px",
-          flexWrap: "wrap",
-        }}
-      >
+      {/* Dashboard Heading */}
+      <div className="dashboard-heading">
+
         <div>
+          <span className="dashboard-eyebrow">
+            Employer Portal
+          </span>
+
           <h1>Employer Dashboard</h1>
 
-          {user?.name && (
-            <p>
-              Welcome, <strong>{user.name}</strong> 👋
-            </p>
-          )}
+          <p>
+            Welcome back,{" "}
+            <strong>
+              {user?.name || "Employer"}
+            </strong>{" "}
+            👋
+          </p>
         </div>
 
-        <div
-          style={{
-            display: "flex",
-            gap: "10px",
-            flexWrap: "wrap",
-          }}
+        <button
+          type="button"
+          className="dashboard-primary-button"
+          onClick={() => navigate("/post-job")}
         >
-          <button
-            type="button"
-            onClick={() => navigate("/")}
-          >
-            Home
-          </button>
+          + Post a Job
+        </button>
 
-          <button
-            type="button"
-            onClick={() => navigate("/jobs")}
-          >
-            Browse Jobs
-          </button>
-
-          <button
-            type="button"
-            onClick={() => navigate("/post-job")}
-          >
-            + Post a Job
-          </button>
-
-          <button
-            type="button"
-            onClick={handleLogout}
-          >
-            Logout
-          </button>
-        </div>
       </div>
-
-      {/* Loading */}
-      {loading && (
-        <p>Loading your jobs...</p>
-      )}
 
       {/* Error */}
       {error && (
-        <p style={{ color: "red" }}>
-          {error}
-        </p>
+        <div className="dashboard-error">
+          <strong>Something went wrong</strong>
+          <p>{error}</p>
+        </div>
       )}
 
-      {/* No Jobs */}
-      {!loading &&
-        !error &&
-        jobs.length === 0 && (
-          <section className="dashboard-section">
-            <h2>No Job Listings Yet</h2>
-
-            <p>
-              You have not posted any jobs yet.
-            </p>
-
-            <button
-              type="button"
-              onClick={() => navigate("/post-job")}
-            >
-              + Post Your First Job
-            </button>
-          </section>
-        )}
-
       {/* Jobs */}
-      {!loading &&
-        jobs.length > 0 && (
-          <section className="dashboard-section">
+      <section className="dashboard-section">
 
+        <div className="section-heading">
+
+          <div>
             <h2>My Job Listings</h2>
 
-            {jobs.map((job) => (
-              <div
-                className="application-card"
-                key={job._id}
-              >
+            <p>
+              Manage your posted jobs and
+              applications.
+            </p>
+          </div>
 
-                <h3>{job.title}</h3>
+          <span className="application-count">
+            {jobs.length}{" "}
+            {jobs.length === 1
+              ? "Job"
+              : "Jobs"}
+          </span>
 
-                <p>
-                  <strong>Company:</strong>{" "}
-                  {job.company}
-                </p>
+        </div>
 
-                <p>
-                  <strong>Location:</strong>{" "}
-                  {job.location}
-                </p>
-
-                <p>
-                  <strong>Job Type:</strong>{" "}
-                  {job.jobType}
-                </p>
-
-                <p>
-                  <strong>Salary:</strong>{" "}
-                  {job.salary || "Not specified"}
-                </p>
-
-                <p>
-                  <strong>Posted:</strong>{" "}
-                  {job.createdAt
-                    ? new Date(
-                        job.createdAt
-                      ).toLocaleDateString()
-                    : "N/A"}
-                </p>
-
-                <div
-                  style={{
-                    display: "flex",
-                    gap: "10px",
-                    flexWrap: "wrap",
-                    marginTop: "15px",
-                  }}
-                >
-                  <button
-                    type="button"
-                    onClick={() =>
-                      fetchApplicants(job._id)
-                    }
-                  >
-                    View Applicants
-                  </button>
-
-                  <button
-                    type="button"
-                    onClick={() =>
-                      navigate(
-                        `/jobs/${job._id}`
-                      )
-                    }
-                  >
-                    View Job
-                  </button>
-                </div>
-
-                {/* Applicants */}
-                {selectedJob === job._id &&
-                  applicants[job._id] && (
-                    <div
-                      className="applicants-section"
-                      style={{
-                        marginTop: "20px",
-                      }}
-                    >
-
-                      <h3>Applicants</h3>
-
-                      {applicants[job._id].length ===
-                      0 ? (
-                        <p>
-                          No applicants yet.
-                        </p>
-                      ) : (
-                        applicants[job._id].map(
-                          (application) => (
-                            <div
-                              className="application-card"
-                              key={
-                                application._id
-                              }
-                            >
-
-                              <h4>
-                                {
-                                  application
-                                    .candidate?.name
-                                }
-                              </h4>
-
-                              <p>
-                                <strong>
-                                  Email:
-                                </strong>{" "}
-                                {
-                                  application
-                                    .candidate?.email
-                                }
-                              </p>
-
-                              <p>
-                                <strong>
-                                  Status:
-                                </strong>{" "}
-                                {
-                                  application.status
-                                }
-                              </p>
-
-                              <select
-                                value={
-                                  application.status
-                                }
-                                onChange={(e) =>
-                                  updateStatus(
-                                    application._id,
-                                    e.target.value,
-                                    job._id
-                                  )
-                                }
-                              >
-                                <option value="Applied">
-                                  Applied
-                                </option>
-
-                                <option value="Under Review">
-                                  Under Review
-                                </option>
-
-                                <option value="Shortlisted">
-                                  Shortlisted
-                                </option>
-
-                                <option value="Rejected">
-                                  Rejected
-                                </option>
-                              </select>
-
-                              {application.resume && (
-                                <p>
-                                  <strong>
-                                    Resume:
-                                  </strong>{" "}
-                                  {
-                                    application.resume
-                                  }
-                                </p>
-                              )}
-
-                            </div>
-                          )
-                        )
-                      )}
-
-                    </div>
-                  )}
-
-              </div>
-            ))}
-
-          </section>
+        {/* Loading */}
+        {loading && (
+          <div className="dashboard-state">
+            <div className="loading-spinner"></div>
+            <p>Loading your jobs...</p>
+          </div>
         )}
 
-    </div>
+        {/* Empty */}
+        {!loading &&
+          !error &&
+          jobs.length === 0 && (
+            <div className="dashboard-empty">
+
+              <div className="empty-icon">
+                💼
+              </div>
+
+              <h3>No job listings yet</h3>
+
+              <p>
+                Create your first job listing
+                and start receiving applications.
+              </p>
+
+              <button
+                type="button"
+                className="dashboard-primary-button"
+                onClick={() =>
+                  navigate("/post-job")
+                }
+              >
+                + Post Your First Job
+              </button>
+
+            </div>
+          )}
+
+        {/* Job List */}
+        {!loading &&
+          jobs.length > 0 && (
+            <div className="employer-jobs-list">
+
+              {jobs.map((job) => (
+                <article
+                  className="employer-job-card"
+                  key={job._id}
+                >
+
+                  <div className="employer-job-header">
+
+                    <div>
+                      <span className="application-label">
+                        Job Listing
+                      </span>
+
+                      <h3>{job.title}</h3>
+                    </div>
+
+                    <span className="job-type-badge">
+                      {job.jobType}
+                    </span>
+
+                  </div>
+
+                  <div className="application-details">
+
+                    <div className="detail-item">
+                      <span className="detail-label">
+                        Company
+                      </span>
+
+                      <span className="detail-value">
+                        {job.company}
+                      </span>
+                    </div>
+
+                    <div className="detail-item">
+                      <span className="detail-label">
+                        Location
+                      </span>
+
+                      <span className="detail-value">
+                        {job.location}
+                      </span>
+                    </div>
+
+                    <div className="detail-item">
+                      <span className="detail-label">
+                        Salary
+                      </span>
+
+                      <span className="detail-value">
+                        {job.salary ||
+                          "Not specified"}
+                      </span>
+                    </div>
+
+                    <div className="detail-item">
+                      <span className="detail-label">
+                        Posted
+                      </span>
+
+                      <span className="detail-value">
+                        {job.createdAt
+                          ? new Date(
+                              job.createdAt
+                            ).toLocaleDateString(
+                              "en-IN",
+                              {
+                                day: "2-digit",
+                                month: "short",
+                                year: "numeric",
+                              }
+                            )
+                          : "N/A"}
+                      </span>
+                    </div>
+
+                  </div>
+
+                  <div className="employer-job-actions">
+
+                    <button
+                      type="button"
+                      className="dashboard-primary-button"
+                      onClick={() =>
+                        fetchApplicants(job._id)
+                      }
+                    >
+                      View Applicants
+                    </button>
+
+                    <button
+                      type="button"
+                      className="dashboard-secondary-button"
+                      onClick={() =>
+                        navigate(
+                          `/jobs/${job._id}`
+                        )
+                      }
+                    >
+                      View Job
+                    </button>
+
+                  </div>
+
+                  {/* Applicants */}
+                  {selectedJob === job._id &&
+                    applicants[job._id] && (
+                      <div className="applicants-panel">
+
+                        <div className="section-heading">
+                          <div>
+                            <h3>Applicants</h3>
+
+                            <p>
+                              Review candidates
+                              for this position.
+                            </p>
+                          </div>
+
+                          <span className="application-count">
+                            {
+                              applicants[job._id]
+                                .length
+                            }{" "}
+                            Applicants
+                          </span>
+                        </div>
+
+                        {applicants[job._id]
+                          .length === 0 ? (
+                          <div className="applicants-empty">
+                            No applicants yet.
+                          </div>
+                        ) : (
+                          applicants[job._id].map(
+                            (application) => (
+                              <div
+                                className="applicant-card"
+                                key={
+                                  application._id
+                                }
+                              >
+
+                                <div>
+                                  <h4>
+                                    {
+                                      application
+                                        .candidate
+                                        ?.name
+                                    }
+                                  </h4>
+
+                                  <p>
+                                    {
+                                      application
+                                        .candidate
+                                        ?.email
+                                    }
+                                  </p>
+                                </div>
+
+                                <div className="applicant-controls">
+
+                                  <span
+                                    className={`status-badge status-${(
+                                      application.status ||
+                                      "Applied"
+                                    )
+                                      .toLowerCase()
+                                      .replace(
+                                        /\s+/g,
+                                        "-"
+                                      )}`}
+                                  >
+                                    {
+                                      application.status
+                                    }
+                                  </span>
+
+                                  <select
+                                    value={
+                                      application.status
+                                    }
+                                    onChange={(e) =>
+                                      updateStatus(
+                                        application._id,
+                                        e.target
+                                          .value,
+                                        job._id
+                                      )
+                                    }
+                                  >
+                                    <option value="Applied">
+                                      Applied
+                                    </option>
+
+                                    <option value="Under Review">
+                                      Under Review
+                                    </option>
+
+                                    <option value="Shortlisted">
+                                      Shortlisted
+                                    </option>
+
+                                    <option value="Rejected">
+                                      Rejected
+                                    </option>
+                                  </select>
+
+                                </div>
+
+                                {application.resume && (
+                                  <p className="applicant-resume">
+                                    📄{" "}
+                                    {
+                                      application.resume
+                                    }
+                                  </p>
+                                )}
+
+                              </div>
+                            )
+                          )
+                        )}
+
+                      </div>
+                    )}
+
+                </article>
+              ))}
+
+            </div>
+          )}
+
+      </section>
+
+    </main>
   );
 }
 
