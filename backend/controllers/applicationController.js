@@ -1,9 +1,9 @@
 const mongoose = require("mongoose");
-const fs = require("fs");
-const path = require("path");
 const Application = require("../models/Application");
 const Job = require("../models/Job");
 const User = require("../models/User");
+
+const getGridFSBucket = require("../config/gridfs");
 const {
   sendApplicationEmail,
   sendStatusUpdateEmail,
@@ -63,12 +63,33 @@ const applyForJob = async (req, res) => {
     }
 
     // Create application
-    const application = await Application.create({
-      job: jobId,
-      candidate: req.user.userId,
-      resume: req.file.filename,
-      coverLetter: coverLetter || "",
-    });
+    const bucket = getGridFSBucket();
+
+const uploadStream = bucket.openUploadStream(
+  req.file.originalname,
+  {
+    metadata: {
+      candidateId: req.user.userId,
+      jobId: jobId,
+      contentType: req.file.mimetype,
+    },
+  }
+);
+
+await new Promise((resolve, reject) => {
+  uploadStream.on("finish", resolve);
+  uploadStream.on("error", reject);
+
+  uploadStream.end(req.file.buffer);
+});
+
+const application = await Application.create({
+  job: jobId,
+  candidate: req.user.userId,
+  resume: uploadStream.id.toString(),
+  resumeFileName: req.file.originalname,
+  coverLetter: coverLetter || "",
+});
 
     const candidate = await User.findById(req.user.userId);
 
@@ -267,7 +288,6 @@ if (candidate) {
 
 const downloadResume = async (req, res) => {
   try {
-    // Only employers can download resumes
     if (req.user.role !== "Employer") {
       return res.status(403).json({
         message: "Only employers can download resumes",
@@ -276,14 +296,12 @@ const downloadResume = async (req, res) => {
 
     const { applicationId } = req.params;
 
-    // Validate application ID
     if (!mongoose.Types.ObjectId.isValid(applicationId)) {
       return res.status(400).json({
         message: "Invalid application ID",
       });
     }
 
-    // Find application and populate job
     const application = await Application.findById(
       applicationId
     ).populate("job");
@@ -294,7 +312,7 @@ const downloadResume = async (req, res) => {
       });
     }
 
-    // Check that employer owns this job
+    // Check that this employer owns the job
     if (
       application.job.employer.toString() !==
       req.user.userId
@@ -305,48 +323,70 @@ const downloadResume = async (req, res) => {
       });
     }
 
-    // Check resume exists
     if (!application.resume) {
       return res.status(404).json({
         message: "Resume not found",
       });
     }
 
-    // Resume location
-    const resumePath = path.join(
-      __dirname,
-      "../uploads",
-      application.resume
-    );
-
-    // Check file exists
-    if (!fs.existsSync(resumePath)) {
+    // Check GridFS file ID
+    if (
+      !mongoose.Types.ObjectId.isValid(
+        application.resume
+      )
+    ) {
       return res.status(404).json({
         message:
-          "Resume file is no longer available",
+          "This resume was uploaded using the old storage system.",
       });
     }
 
-    // Download resume
-    res.download(
-      resumePath,
-      application.resume,
-      (error) => {
-        if (error) {
-          console.error(
-            "Resume download error:",
-            error
-          );
+    const bucket = getGridFSBucket();
 
-          if (!res.headersSent) {
-            res.status(500).json({
-              message:
-                "Unable to download resume",
-            });
-          }
-        }
-      }
+    const fileId = new mongoose.Types.ObjectId(
+      application.resume
     );
+
+    const files = await bucket
+      .find({ _id: fileId })
+      .toArray();
+
+    if (!files.length) {
+      return res.status(404).json({
+        message: "Resume file not found in GridFS",
+      });
+    }
+
+    const file = files[0];
+
+    res.setHeader(
+      "Content-Type",
+      file.contentType ||
+        "application/octet-stream"
+    );
+
+    res.setHeader(
+      "Content-Disposition",
+      `attachment; filename="${application.resumeFileName || file.filename}"`
+    );
+
+    const downloadStream =
+      bucket.openDownloadStream(fileId);
+
+    downloadStream.on("error", (error) => {
+      console.error(
+        "GridFS download error:",
+        error
+      );
+
+      if (!res.headersSent) {
+        res.status(500).json({
+          message: "Unable to download resume",
+        });
+      }
+    });
+
+    downloadStream.pipe(res);
   } catch (error) {
     console.error(
       "Download resume error:",

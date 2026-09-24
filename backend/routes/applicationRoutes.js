@@ -19,7 +19,13 @@ router.post(
   upload.single("resume"),
   applyForJob
 );
-router.get("/my-applications", protect, getMyApplications);
+
+router.get(
+  "/my-applications",
+  protect,
+  getMyApplications
+);
+
 router.get(
   "/job/:jobId",
   protect,
@@ -31,6 +37,7 @@ router.patch(
   protect,
   updateApplicationStatus
 );
+
 router.get(
   "/:applicationId/resume",
   protect,

@@ -14,7 +14,14 @@ const applicationSchema = new mongoose.Schema(
       required: true,
     },
 
+    // GridFS file ID
     resume: {
+      type: String,
+      default: "",
+    },
+
+    // Original resume filename
+    resumeFileName: {
       type: String,
       default: "",
     },
@@ -40,4 +47,7 @@ const applicationSchema = new mongoose.Schema(
   }
 );
 
-module.exports = mongoose.model("Application", applicationSchema);
+module.exports = mongoose.model(
+  "Application",
+  applicationSchema
+);
