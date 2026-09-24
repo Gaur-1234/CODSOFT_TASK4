@@ -68,14 +68,14 @@ const applyForJob = async (req, res) => {
 const uploadStream = bucket.openUploadStream(
   req.file.originalname,
   {
+    contentType: req.file.mimetype,
+
     metadata: {
       candidateId: req.user.userId,
       jobId: jobId,
-      contentType: req.file.mimetype,
     },
   }
 );
-
 await new Promise((resolve, reject) => {
   uploadStream.on("finish", resolve);
   uploadStream.on("error", reject);

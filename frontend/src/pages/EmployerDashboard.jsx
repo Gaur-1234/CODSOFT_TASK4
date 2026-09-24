@@ -15,6 +15,10 @@ function EmployerDashboard() {
     localStorage.getItem("user") || "null"
   );
 
+  // ================================
+  // FETCH EMPLOYER JOBS
+  // ================================
+
   const fetchMyJobs = async () => {
     try {
       setLoading(true);
@@ -52,6 +56,10 @@ function EmployerDashboard() {
       setLoading(false);
     }
   };
+
+  // ================================
+  // FETCH APPLICANTS
+  // ================================
 
   const fetchApplicants = async (jobId) => {
     try {
@@ -92,6 +100,10 @@ function EmployerDashboard() {
       );
     }
   };
+
+  // ================================
+  // UPDATE APPLICATION STATUS
+  // ================================
 
   const updateStatus = async (
     applicationId,
@@ -134,63 +146,79 @@ function EmployerDashboard() {
     }
   };
 
+  // ================================
+  // DOWNLOAD RESUME
+  // ================================
+
   const downloadResume = async (
-  applicationId,
-  fileName
-) => {
-  try {
-    setError("");
+    applicationId,
+    fileName
+  ) => {
+    try {
+      setError("");
 
-    const token = localStorage.getItem("token");
+      const token = localStorage.getItem("token");
 
-    if (!token) {
-      setError("Please login as an employer.");
-      return;
-    }
-
-    const response = await API.get(
-      `/applications/${applicationId}/resume`,
-      {
-        headers: {
-          Authorization: `Bearer ${token}`,
-        },
-        responseType: "blob",
+      if (!token) {
+        setError("Please login as an employer.");
+        return;
       }
-    );
 
-    const blob = new Blob([
-      response.data,
-    ]);
+      const response = await API.get(
+        `/applications/${applicationId}/resume`,
+        {
+          headers: {
+            Authorization: `Bearer ${token}`,
+          },
+          responseType: "blob",
+        }
+      );
 
-    const url =
-      window.URL.createObjectURL(blob);
+      // Create downloadable Blob
+      const blob = new Blob(
+        [response.data],
+        {
+          type:
+            response.headers["content-type"] ||
+            "application/octet-stream",
+        }
+      );
 
-    const link =
-      document.createElement("a");
+      const url =
+        window.URL.createObjectURL(blob);
 
-    link.href = url;
-    link.download =
-      fileName || "resume";
+      const link =
+        document.createElement("a");
 
-    document.body.appendChild(link);
+      link.href = url;
 
-    link.click();
+      // Use original filename
+      link.download =
+        fileName || "resume";
 
-    link.remove();
+      document.body.appendChild(link);
 
-    window.URL.revokeObjectURL(url);
-  } catch (error) {
-    console.error(
-      "Resume download error:",
-      error
-    );
+      link.click();
 
-    setError(
-      error.response?.data?.message ||
-        "Unable to download resume."
-    );
-  }
-};
+      link.remove();
+
+      window.URL.revokeObjectURL(url);
+    } catch (error) {
+      console.error(
+        "Resume download error:",
+        error
+      );
+
+      setError(
+        error.response?.data?.message ||
+          "Unable to download resume."
+      );
+    }
+  };
+
+  // ================================
+  // INITIAL LOAD
+  // ================================
 
   useEffect(() => {
     // Intentional API data-fetching effect.
@@ -201,7 +229,10 @@ function EmployerDashboard() {
   return (
     <main className="dashboard-page">
 
-      {/* Dashboard Heading */}
+      {/* ================================
+          DASHBOARD HEADING
+      ================================= */}
+
       <div className="dashboard-heading">
 
         <div>
@@ -230,7 +261,10 @@ function EmployerDashboard() {
 
       </div>
 
-      {/* Error */}
+      {/* ================================
+          ERROR
+      ================================= */}
+
       {error && (
         <div className="dashboard-error">
           <strong>Something went wrong</strong>
@@ -238,7 +272,10 @@ function EmployerDashboard() {
         </div>
       )}
 
-      {/* Jobs */}
+      {/* ================================
+          JOB SECTION
+      ================================= */}
+
       <section className="dashboard-section">
 
         <div className="section-heading">
@@ -261,15 +298,24 @@ function EmployerDashboard() {
 
         </div>
 
-        {/* Loading */}
+        {/* ================================
+            LOADING
+        ================================= */}
+
         {loading && (
           <div className="dashboard-state">
             <div className="loading-spinner"></div>
-            <p>Loading your jobs...</p>
+
+            <p>
+              Loading your jobs...
+            </p>
           </div>
         )}
 
-        {/* Empty */}
+        {/* ================================
+            EMPTY
+        ================================= */}
+
         {!loading &&
           !error &&
           jobs.length === 0 && (
@@ -279,11 +325,14 @@ function EmployerDashboard() {
                 💼
               </div>
 
-              <h3>No job listings yet</h3>
+              <h3>
+                No job listings yet
+              </h3>
 
               <p>
                 Create your first job listing
-                and start receiving applications.
+                and start receiving
+                applications.
               </p>
 
               <button
@@ -299,7 +348,10 @@ function EmployerDashboard() {
             </div>
           )}
 
-        {/* Job List */}
+        {/* ================================
+            JOB LIST
+        ================================= */}
+
         {!loading &&
           jobs.length > 0 && (
             <div className="employer-jobs-list">
@@ -310,14 +362,20 @@ function EmployerDashboard() {
                   key={job._id}
                 >
 
+                  {/* JOB HEADER */}
+
                   <div className="employer-job-header">
 
                     <div>
+
                       <span className="application-label">
                         Job Listing
                       </span>
 
-                      <h3>{job.title}</h3>
+                      <h3>
+                        {job.title}
+                      </h3>
+
                     </div>
 
                     <span className="job-type-badge">
@@ -326,9 +384,12 @@ function EmployerDashboard() {
 
                   </div>
 
+                  {/* JOB DETAILS */}
+
                   <div className="application-details">
 
                     <div className="detail-item">
+
                       <span className="detail-label">
                         Company
                       </span>
@@ -336,9 +397,11 @@ function EmployerDashboard() {
                       <span className="detail-value">
                         {job.company}
                       </span>
+
                     </div>
 
                     <div className="detail-item">
+
                       <span className="detail-label">
                         Location
                       </span>
@@ -346,9 +409,11 @@ function EmployerDashboard() {
                       <span className="detail-value">
                         {job.location}
                       </span>
+
                     </div>
 
                     <div className="detail-item">
+
                       <span className="detail-label">
                         Salary
                       </span>
@@ -357,9 +422,11 @@ function EmployerDashboard() {
                         {job.salary ||
                           "Not specified"}
                       </span>
+
                     </div>
 
                     <div className="detail-item">
+
                       <span className="detail-label">
                         Posted
                       </span>
@@ -378,9 +445,12 @@ function EmployerDashboard() {
                             )
                           : "N/A"}
                       </span>
+
                     </div>
 
                   </div>
+
+                  {/* JOB ACTIONS */}
 
                   <div className="employer-job-actions">
 
@@ -388,7 +458,9 @@ function EmployerDashboard() {
                       type="button"
                       className="dashboard-primary-button"
                       onClick={() =>
-                        fetchApplicants(job._id)
+                        fetchApplicants(
+                          job._id
+                        )
                       }
                     >
                       View Applicants
@@ -408,38 +480,54 @@ function EmployerDashboard() {
 
                   </div>
 
-                  {/* Applicants */}
+                  {/* ================================
+                      APPLICANTS
+                  ================================= */}
+
                   {selectedJob === job._id &&
                     applicants[job._id] && (
                       <div className="applicants-panel">
 
                         <div className="section-heading">
+
                           <div>
-                            <h3>Applicants</h3>
+
+                            <h3>
+                              Applicants
+                            </h3>
 
                             <p>
                               Review candidates
                               for this position.
                             </p>
+
                           </div>
 
                           <span className="application-count">
                             {
-                              applicants[job._id]
-                                .length
+                              applicants[
+                                job._id
+                              ].length
                             }{" "}
                             Applicants
                           </span>
+
                         </div>
+
+                        {/* NO APPLICANTS */}
 
                         {applicants[job._id]
                           .length === 0 ? (
+
                           <div className="applicants-empty">
                             No applicants yet.
                           </div>
+
                         ) : (
+
                           applicants[job._id].map(
                             (application) => (
+
                               <div
                                 className="applicant-card"
                                 key={
@@ -447,7 +535,10 @@ function EmployerDashboard() {
                                 }
                               >
 
+                                {/* CANDIDATE */}
+
                                 <div>
+
                                   <h4>
                                     {
                                       application
@@ -463,7 +554,10 @@ function EmployerDashboard() {
                                         ?.email
                                     }
                                   </p>
+
                                 </div>
+
+                                {/* STATUS */}
 
                                 <div className="applicant-controls">
 
@@ -479,23 +573,25 @@ function EmployerDashboard() {
                                       )}`}
                                   >
                                     {
-                                      application.status
+                                      application.status ||
+                                      "Applied"
                                     }
                                   </span>
 
                                   <select
                                     value={
-                                      application.status
+                                      application.status ||
+                                      "Applied"
                                     }
                                     onChange={(e) =>
                                       updateStatus(
                                         application._id,
-                                        e.target
-                                          .value,
+                                        e.target.value,
                                         job._id
                                       )
                                     }
                                   >
+
                                     <option value="Applied">
                                       Applied
                                     </option>
@@ -511,48 +607,65 @@ function EmployerDashboard() {
                                     <option value="Rejected">
                                       Rejected
                                     </option>
+
                                   </select>
 
                                 </div>
 
-                              {application.resume && (
-  <div className="applicant-resume">
+                                {/* ================================
+                                    RESUME
+                                ================================= */}
 
-    <div className="resume-file">
-      <span className="resume-icon">
-        📄
-      </span>
+                                {application.resume && (
 
-      <div>
-        <span className="detail-label">
-          Resume
-        </span>
+                                  <div className="applicant-resume">
 
-        <span className="detail-value">
-          {application.resume}
-        </span>
-      </div>
-    </div>
+                                    <div className="resume-file">
 
-    <button
-      type="button"
-      className="resume-download-button"
-      onClick={() =>
-        downloadResume(
-          application._id,
-          application.resume
-        )
-      }
-    >
-      ↓ Download Resume
-    </button>
+                                      <span className="resume-icon">
+                                        📄
+                                      </span>
 
-  </div>
-)}
+                                      <div>
+
+                                        <span className="detail-label">
+                                          Resume
+                                        </span>
+
+                                        <span className="detail-value">
+                                          {
+                                            application.resumeFileName ||
+                                            "Resume"
+                                          }
+                                        </span>
+
+                                      </div>
+
+                                    </div>
+
+                                    <button
+                                      type="button"
+                                      className="resume-download-button"
+                                      onClick={() =>
+                                        downloadResume(
+                                          application._id,
+                                          application.resumeFileName ||
+                                            "resume"
+                                        )
+                                      }
+                                    >
+                                      ↓ Download Resume
+                                    </button>
+
+                                  </div>
+
+                                )}
 
                               </div>
+
                             )
                           )
+
                         )}
 
                       </div>
