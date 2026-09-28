@@ -38,6 +38,7 @@ const applicationSchema = new mongoose.Schema(
         "Under Review",
         "Shortlisted",
         "Rejected",
+        "Withdrawn",
       ],
       default: "Applied",
     },

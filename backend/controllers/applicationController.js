@@ -399,10 +399,388 @@ const downloadResume = async (req, res) => {
   }
 };
 
+const getApplicationStats = async (req, res) => {
+  try {
+    // Only candidates can view application statistics
+    if (req.user.role !== "Candidate") {
+      return res.status(403).json({
+        message:
+          "Only candidates can view application statistics",
+      });
+    }
+
+    const applications = await Application.find({
+      candidate: req.user.userId,
+    });
+
+    const totalApplications = applications.length;
+
+    const applied = applications.filter(
+      (application) =>
+        application.status === "Applied"
+    ).length;
+
+    const underReview = applications.filter(
+      (application) =>
+        application.status === "Under Review"
+    ).length;
+
+    const shortlisted = applications.filter(
+      (application) =>
+        application.status === "Shortlisted"
+    ).length;
+
+    const rejected = applications.filter(
+      (application) =>
+        application.status === "Rejected"
+    ).length;
+
+    res.status(200).json({
+      message:
+        "Application statistics fetched successfully",
+
+      stats: {
+        totalApplications,
+        applied,
+        underReview,
+        shortlisted,
+        rejected,
+      },
+    });
+  } catch (error) {
+    console.error(
+      "Application stats error:",
+      error
+    );
+
+    res.status(500).json({
+      message: "Server error",
+    });
+  }
+};
+
+const getApplicationDetails = async (req, res) => {
+  try {
+    // Only candidates can view application details
+    if (req.user.role !== "Candidate") {
+      return res.status(403).json({
+        message:
+          "Only candidates can view application details",
+      });
+    }
+
+    const { applicationId } = req.params;
+
+    // Validate application ID
+    if (
+      !mongoose.Types.ObjectId.isValid(
+        applicationId
+      )
+    ) {
+      return res.status(400).json({
+        message: "Invalid application ID",
+      });
+    }
+
+    // Find application belonging to logged-in candidate
+    const application =
+      await Application.findOne({
+        _id: applicationId,
+        candidate: req.user.userId,
+      })
+        .populate(
+          "job",
+          "title company location description requirements salary jobType createdAt"
+        )
+        .populate(
+          "candidate",
+          "name email phone location"
+        );
+
+    if (!application) {
+      return res.status(404).json({
+        message: "Application not found",
+      });
+    }
+
+    res.status(200).json({
+      message:
+        "Application details fetched successfully",
+      application,
+    });
+  } catch (error) {
+    console.error(
+      "Application details error:",
+      error
+    );
+
+    res.status(500).json({
+      message: "Server error",
+    });
+  }
+};
+
+const withdrawApplication = async (req, res) => {
+  try {
+    // Only candidates can withdraw applications
+    if (req.user.role !== "Candidate") {
+      return res.status(403).json({
+        message:
+          "Only candidates can withdraw applications",
+      });
+    }
+
+    const { applicationId } = req.params;
+
+    // Validate application ID
+    if (
+      !mongoose.Types.ObjectId.isValid(
+        applicationId
+      )
+    ) {
+      return res.status(400).json({
+        message: "Invalid application ID",
+      });
+    }
+
+    // Find only the logged-in candidate's application
+    const application =
+      await Application.findOne({
+        _id: applicationId,
+        candidate: req.user.userId,
+      }).populate("job");
+
+    if (!application) {
+      return res.status(404).json({
+        message: "Application not found",
+      });
+    }
+
+    // Already withdrawn
+    if (application.status === "Withdrawn") {
+      return res.status(400).json({
+        message:
+          "Application has already been withdrawn",
+      });
+    }
+
+    // Do not allow withdrawal after rejection
+    if (application.status === "Rejected") {
+      return res.status(400).json({
+        message:
+          "Rejected applications cannot be withdrawn",
+      });
+    }
+
+    // Do not allow withdrawal after being shortlisted
+    if (application.status === "Shortlisted") {
+      return res.status(400).json({
+        message:
+          "Shortlisted applications cannot be withdrawn",
+      });
+    }
+
+    // Update status
+    application.status = "Withdrawn";
+
+    await application.save();
+
+    res.status(200).json({
+      message:
+        "Application withdrawn successfully",
+      application,
+    });
+  } catch (error) {
+    console.error(
+      "Withdraw application error:",
+      error
+    );
+
+    res.status(500).json({
+      message: "Server error",
+    });
+  }
+};
+
+const searchApplicants = async (req, res) => {
+  try {
+    if (req.user.role !== "Employer") {
+      return res.status(403).json({
+        message: "Only employers can search applicants",
+      });
+    }
+
+    const { query = "", jobId } = req.query;
+
+    const filter = {};
+
+    if (jobId) {
+      if (!mongoose.Types.ObjectId.isValid(jobId)) {
+        return res.status(400).json({
+          message: "Invalid job ID",
+        });
+      }
+
+      const job = await Job.findOne({
+        _id: jobId,
+        employer: req.user.userId,
+      });
+
+      if (!job) {
+        return res.status(404).json({
+          message: "Job not found or unauthorized",
+        });
+      }
+
+      filter.job = jobId;
+    } else {
+      const employerJobs = await Job.find({
+        employer: req.user.userId,
+      }).select("_id");
+
+      filter.job = {
+        $in: employerJobs.map((job) => job._id),
+      };
+    }
+
+    const applications = await Application.find(filter)
+      .populate(
+        "candidate",
+        "name email phone location skills education experience linkedin github portfolio"
+      )
+      .populate(
+        "job",
+        "title company location jobType status"
+      )
+      .sort({ createdAt: -1 });
+
+    const search = query.trim().toLowerCase();
+
+    const filteredApplications = applications.filter(
+      (application) => {
+        if (!search) return true;
+
+        const candidate = application.candidate;
+
+        return (
+          candidate.name?.toLowerCase().includes(search) ||
+          candidate.email?.toLowerCase().includes(search) ||
+          candidate.phone?.toLowerCase().includes(search) ||
+          candidate.location?.toLowerCase().includes(search) ||
+          candidate.skills?.some((skill) =>
+            skill.toLowerCase().includes(search)
+          )
+        );
+      }
+    );
+
+    res.status(200).json({
+      message: "Applicants search completed successfully",
+      count: filteredApplications.length,
+      applications: filteredApplications,
+    });
+  } catch (error) {
+    console.error("Search applicants error:", error);
+
+    res.status(500).json({
+      message: "Server error",
+    });
+  }
+};
+
+const filterApplicants = async (req, res) => {
+  try {
+    if (req.user.role !== "Employer") {
+      return res.status(403).json({
+        message: "Only employers can filter applicants",
+      });
+    }
+
+    const { status, jobId } = req.query;
+
+    const allowedStatuses = [
+      "Applied",
+      "Under Review",
+      "Shortlisted",
+      "Rejected",
+      "Withdrawn",
+    ];
+
+    if (status && !allowedStatuses.includes(status)) {
+      return res.status(400).json({
+        message: "Invalid application status",
+      });
+    }
+
+    const filter = {};
+
+    if (status) {
+      filter.status = status;
+    }
+
+    if (jobId) {
+      if (!mongoose.Types.ObjectId.isValid(jobId)) {
+        return res.status(400).json({
+          message: "Invalid job ID",
+        });
+      }
+
+      const job = await Job.findOne({
+        _id: jobId,
+        employer: req.user.userId,
+      });
+
+      if (!job) {
+        return res.status(404).json({
+          message: "Job not found or unauthorized",
+        });
+      }
+
+      filter.job = jobId;
+    } else {
+      const employerJobs = await Job.find({
+        employer: req.user.userId,
+      }).select("_id");
+
+      filter.job = {
+        $in: employerJobs.map((job) => job._id),
+      };
+    }
+
+    const applications = await Application.find(filter)
+      .populate(
+        "candidate",
+        "name email phone location skills education experience linkedin github portfolio"
+      )
+      .populate(
+        "job",
+        "title company location jobType status"
+      )
+      .sort({ createdAt: -1 });
+
+    res.status(200).json({
+      message: "Applicants filtered successfully",
+      count: applications.length,
+      applications,
+    });
+  } catch (error) {
+    console.error("Filter applicants error:", error);
+
+    res.status(500).json({
+      message: "Server error",
+    });
+  }
+};
+
 module.exports = {
   applyForJob,
   getMyApplications,
   getJobApplicants,
   updateApplicationStatus,
   downloadResume,
+  getApplicationStats,
+  getApplicationDetails,
+  withdrawApplication,
+  searchApplicants,
+  filterApplicants,
 };

@@ -6,6 +6,11 @@ const {
   getJobApplicants,
   updateApplicationStatus,
   downloadResume,
+  getApplicationStats,
+  getApplicationDetails,
+  withdrawApplication,
+  searchApplicants,
+  filterApplicants,
 } = require("../controllers/applicationController");
 
 const protect = require("../middleware/authMiddleware");
@@ -27,9 +32,40 @@ router.get(
 );
 
 router.get(
+  "/stats",
+  protect,
+  getApplicationStats
+);
+
+router.get(
+  "/search",
+  protect,
+  searchApplicants
+);
+
+router.get(
+  "/filter",
+  protect,
+  filterApplicants
+);
+
+
+router.get(
   "/job/:jobId",
   protect,
   getJobApplicants
+);
+
+router.get(
+  "/:applicationId",
+  protect,
+  getApplicationDetails
+);
+
+router.patch(
+  "/:applicationId/withdraw",
+  protect,
+  withdrawApplication
 );
 
 router.patch(

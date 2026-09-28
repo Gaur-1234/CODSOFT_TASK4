@@ -1,4 +1,8 @@
-import { Link, useLocation, useNavigate } from "react-router-dom";
+import {
+  Link,
+  useLocation,
+  useNavigate,
+} from "react-router-dom";
 import { useEffect, useState } from "react";
 
 function Navbar() {
@@ -6,23 +10,46 @@ function Navbar() {
   const location = useLocation();
 
   const [isLoggedIn, setIsLoggedIn] = useState(
-    !!localStorage.getItem("token")
+    Boolean(localStorage.getItem("accessToken"))
   );
 
-  const [user, setUser] = useState(
-    JSON.parse(localStorage.getItem("user") || "null")
-  );
+  const [user, setUser] = useState(() => {
+    const savedUser = localStorage.getItem("user");
+
+    if (!savedUser) {
+      return null;
+    }
+
+    try {
+      return JSON.parse(savedUser);
+    } catch {
+      return null;
+    }
+  });
 
   useEffect(() => {
     const updateAuthState = () => {
-      const token = localStorage.getItem("token");
+      const accessToken =
+        localStorage.getItem("accessToken");
 
-      const storedUser = JSON.parse(
-        localStorage.getItem("user") || "null"
+      const savedUser =
+        localStorage.getItem("user");
+
+      let currentUser = null;
+
+      if (savedUser) {
+        try {
+          currentUser = JSON.parse(savedUser);
+        } catch {
+          currentUser = null;
+        }
+      }
+
+      setIsLoggedIn(
+        Boolean(accessToken && currentUser)
       );
 
-      setIsLoggedIn(!!token);
-      setUser(storedUser);
+      setUser(currentUser);
     };
 
     updateAuthState();
@@ -38,10 +65,11 @@ function Navbar() {
         updateAuthState
       );
     };
-  }, [location]);
+  }, [location.pathname]);
 
   const handleLogout = () => {
-    localStorage.removeItem("token");
+    localStorage.removeItem("accessToken");
+    localStorage.removeItem("refreshToken");
     localStorage.removeItem("user");
 
     setIsLoggedIn(false);
@@ -50,21 +78,25 @@ function Navbar() {
     navigate("/");
   };
 
+  const getLinkClass = (path) => {
+    return location.pathname === path
+      ? "nav-link active"
+      : "nav-link";
+  };
+
   return (
     <nav className="navbar">
       <div className="navbar-container">
 
         {/* Logo */}
-        <Link
-          to="/"
-          className="logo"
-        >
+        <Link to="/" className="logo">
           JobBoard
         </Link>
 
         {/* Navigation */}
         <div className="nav-links">
 
+          {/* Home */}
           <Link
             to="/"
             className={
@@ -76,6 +108,7 @@ function Navbar() {
             Home
           </Link>
 
+          {/* Jobs */}
           <Link
             to="/jobs"
             className={
@@ -87,15 +120,12 @@ function Navbar() {
             Jobs
           </Link>
 
-          {!isLoggedIn ? (
+          {/* Not Logged In */}
+          {!isLoggedIn && (
             <>
               <Link
                 to="/login"
-                className={
-                  location.pathname === "/login"
-                    ? "nav-link active"
-                    : "nav-link"
-                }
+                className={getLinkClass("/login")}
               >
                 Login
               </Link>
@@ -107,21 +137,32 @@ function Navbar() {
                 Register
               </Link>
             </>
-          ) : (
+          )}
+
+          {/* Logged In */}
+          {isLoggedIn && (
             <>
               {/* Candidate */}
               {user?.role === "Candidate" && (
-                <Link
-                  to="/candidate-dashboard"
-                  className={
-                    location.pathname ===
-                    "/candidate-dashboard"
-                      ? "nav-link active"
-                      : "nav-link"
-                  }
-                >
-                  Dashboard
-                </Link>
+                <>
+                  <Link
+                    to="/candidate-dashboard"
+                    className={getLinkClass(
+                      "/candidate-dashboard"
+                    )}
+                  >
+                    Dashboard
+                  </Link>
+
+                  <Link
+                    to="/candidate-profile"
+                    className={getLinkClass(
+                      "/candidate-profile"
+                    )}
+                  >
+                    Profile
+                  </Link>
+                </>
               )}
 
               {/* Employer */}
@@ -129,30 +170,34 @@ function Navbar() {
                 <>
                   <Link
                     to="/employer-dashboard"
-                    className={
-                      location.pathname ===
+                    className={getLinkClass(
                       "/employer-dashboard"
-                        ? "nav-link active"
-                        : "nav-link"
-                    }
+                    )}
                   >
                     Dashboard
                   </Link>
 
                   <Link
                     to="/post-job"
-                    className={
-                      location.pathname === "/post-job"
-                        ? "nav-link active"
-                        : "nav-link"
-                    }
+                    className={getLinkClass(
+                      "/post-job"
+                    )}
                   >
                     Post Job
+                  </Link>
+
+                  <Link
+                    to="/employer-profile"
+                    className={getLinkClass(
+                      "/employer-profile"
+                    )}
+                  >
+                    Profile
                   </Link>
                 </>
               )}
 
-              {/* User */}
+              {/* User Info */}
               <div className="nav-user">
 
                 <div className="nav-avatar">
@@ -164,6 +209,7 @@ function Navbar() {
                 </div>
 
                 <div className="nav-user-info">
+
                   <span className="nav-user-name">
                     {user?.name || "User"}
                   </span>
@@ -171,6 +217,7 @@ function Navbar() {
                   <span className="nav-user-role">
                     {user?.role || "Account"}
                   </span>
+
                 </div>
 
               </div>
@@ -187,7 +234,6 @@ function Navbar() {
           )}
 
         </div>
-
       </div>
     </nav>
   );

@@ -1,52 +1,67 @@
 import { useState } from "react";
-import { useNavigate } from "react-router-dom";
+import { Link, useNavigate } from "react-router-dom";
 import API from "../services/api";
 
 function Login() {
   const navigate = useNavigate();
 
-  const [email, setEmail] = useState("");
-  const [password, setPassword] = useState("");
+  const [formData, setFormData] = useState({
+    email: "",
+    password: "",
+  });
 
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState("");
-  const [success, setSuccess] = useState("");
 
-  const handleLogin = async (e) => {
+  const handleChange = (e) => {
+    setFormData({
+      ...formData,
+      [e.target.name]: e.target.value,
+    });
+  };
+
+  const handleSubmit = async (e) => {
     e.preventDefault();
 
+    setError("");
+    setLoading(true);
+
     try {
-      setLoading(true);
-      setError("");
-      setSuccess("");
+      const response = await API.post(
+        "/auth/login",
+        formData
+      );
 
-      const response = await API.post("/auth/login", {
-        email,
-        password,
-      });
+      const {
+        accessToken,
+        refreshToken,
+        user,
+      } = response.data;
 
-      const { token, user } = response.data;
+      localStorage.setItem(
+        "accessToken",
+        accessToken
+      );
 
-      // Save JWT token
-      localStorage.setItem("token", token);
+      localStorage.setItem(
+        "refreshToken",
+        refreshToken
+      );
 
-      // Save user information
-      localStorage.setItem("user", JSON.stringify(user));
+      localStorage.setItem(
+        "user",
+        JSON.stringify(user)
+      );
 
-      setSuccess("Login successful!");
-
-      // Redirect according to role
       if (user.role === "Employer") {
         navigate("/employer-dashboard");
       } else {
         navigate("/candidate-dashboard");
       }
     } catch (error) {
-      console.error("Login error:", error);
-
       setError(
         error.response?.data?.message ||
-          "Login failed. Please check your credentials."
+          "Login failed. Please try again."
       );
     } finally {
       setLoading(false);
@@ -55,52 +70,85 @@ function Login() {
 
   return (
     <div className="auth-page">
-      <h1>Login</h1>
+      <div className="auth-card">
 
-      <form onSubmit={handleLogin}>
-        <div>
-          <label>Email</label>
+        <div className="auth-header">
+          <h1>Welcome Back</h1>
 
-          <input
-            type="email"
-            placeholder="Enter your email"
-            value={email}
-            onChange={(e) => setEmail(e.target.value)}
-            required
-          />
-        </div>
-
-        <div>
-          <label>Password</label>
-
-          <input
-            type="password"
-            placeholder="Enter your password"
-            value={password}
-            onChange={(e) => setPassword(e.target.value)}
-            required
-          />
+          <p>
+            Login to continue to JobBoard
+          </p>
         </div>
 
         {error && (
-          <p style={{ color: "red" }}>
+          <div className="auth-error">
             {error}
-          </p>
+          </div>
         )}
 
-        {success && (
-          <p style={{ color: "green" }}>
-            {success}
-          </p>
-        )}
-
-        <button
-          type="submit"
-          disabled={loading}
+        <form
+          onSubmit={handleSubmit}
+          className="auth-form"
         >
-          {loading ? "Logging in..." : "Login"}
-        </button>
-      </form>
+          <div className="form-group">
+            <label htmlFor="email">
+              Email
+            </label>
+
+            <input
+              id="email"
+              type="email"
+              name="email"
+              placeholder="Enter your email"
+              value={formData.email}
+              onChange={handleChange}
+              required
+            />
+          </div>
+
+          <div className="form-group">
+            <label htmlFor="password">
+              Password
+            </label>
+
+            <input
+              id="password"
+              type="password"
+              name="password"
+              placeholder="Enter your password"
+              value={formData.password}
+              onChange={handleChange}
+              required
+            />
+          </div>
+
+          <div className="auth-forgot">
+            <Link to="/forgot-password">
+              Forgot Password?
+            </Link>
+          </div>
+
+          <button
+            type="submit"
+            className="auth-button"
+            disabled={loading}
+          >
+            {loading
+              ? "Logging in..."
+              : "Login"}
+          </button>
+        </form>
+
+        <div className="auth-footer">
+          <p>
+            Don't have an account?{" "}
+            <Link to="/register">
+              Create Account
+            </Link>
+          </p>
+        </div>
+
+      </div>
     </div>
   );
 }
