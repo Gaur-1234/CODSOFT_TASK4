@@ -1,255 +1,287 @@
 import { useEffect, useState } from "react";
-import { useNavigate } from "react-router-dom";
+import { Link } from "react-router-dom";
 import API from "../services/api";
 
 function SavedJobs() {
-  const navigate = useNavigate();
+  const [savedJobs, setSavedJobs] = useState([]);
+  const [loading, setLoading] = useState(true);
+  const [removingId, setRemovingId] = useState("");
+  const [error, setError] = useState("");
 
-  const [jobs, setJobs] = useState([]);
-  const [loading, setLoading] =
-    useState(true);
-
-  const [error, setError] =
-    useState("");
-
-  const [removing, setRemoving] =
-    useState("");
-
-  const fetchSavedJobs = async () => {
-    try {
-      setLoading(true);
-      setError("");
-
-      const response = await API.get(
-        "/jobs/saved"
-      );
-
-      setJobs(
-        response.data.jobs || []
-      );
-    } catch (err) {
-      setError(
-        err.response?.data?.message ||
-          "Unable to load saved jobs."
-      );
-    } finally {
-      setLoading(false);
-    }
-  };
+  // ==========================================
+  // LOAD SAVED JOBS
+  // ==========================================
 
   useEffect(() => {
-    // Intentional API data-fetching effect.
-    // eslint-disable-next-line react-hooks/set-state-in-effect
-    fetchSavedJobs();
+    let cancelled = false;
+
+    const loadSavedJobs = async () => {
+      try {
+        const response = await API.get(
+          "/jobs/saved"
+        );
+
+        if (cancelled) return;
+
+        setSavedJobs(
+          response.data.jobs ||
+            response.data.savedJobs ||
+            response.data ||
+            []
+        );
+      } catch (err) {
+        if (cancelled) return;
+
+        console.error(
+          "Saved jobs error:",
+          err
+        );
+
+        setError(
+          err.response?.data?.message ||
+            "Unable to load saved jobs."
+        );
+      } finally {
+        if (!cancelled) {
+          setLoading(false);
+        }
+      }
+    };
+
+    loadSavedJobs();
+
+    return () => {
+      cancelled = true;
+    };
   }, []);
 
-  const removeSavedJob = async (
-    jobId
-  ) => {
+  // ==========================================
+  // REMOVE SAVED JOB
+  // ==========================================
+
+  const handleRemove = async (jobId) => {
     try {
-      setRemoving(jobId);
+      setRemovingId(jobId);
+      setError("");
 
       await API.delete(
         `/jobs/${jobId}/save`
       );
 
-      setJobs((previous) =>
-        previous.filter(
-          (job) =>
-            job._id !== jobId
+      setSavedJobs((previousJobs) =>
+        previousJobs.filter(
+          (job) => job._id !== jobId
         )
       );
     } catch (err) {
+      console.error(
+        "Remove saved job error:",
+        err
+      );
+
       setError(
         err.response?.data?.message ||
           "Unable to remove saved job."
       );
     } finally {
-      setRemoving("");
+      setRemovingId("");
     }
   };
+
+  // ==========================================
+  // LOADING
+  // ==========================================
+
+  if (loading) {
+    return (
+      <section className="dashboard-section">
+
+        <div className="section-heading">
+
+          <div>
+
+            <h2>
+              Saved Jobs
+            </h2>
+
+            <p>
+              Jobs you saved for later.
+            </p>
+
+          </div>
+
+        </div>
+
+        <div className="dashboard-card">
+
+          <p>
+            Loading saved jobs...
+          </p>
+
+        </div>
+
+      </section>
+    );
+  }
 
   return (
     <section className="dashboard-section">
 
+      {/* ====================================
+          HEADER
+      ===================================== */}
+
       <div className="section-heading">
+
         <div>
-          <h2>Saved Jobs</h2>
+
+          <h2>
+            Saved Jobs
+          </h2>
+
           <p>
             Jobs you saved for later.
           </p>
+
         </div>
 
-        <span className="application-count">
-          {jobs.length}{" "}
-          {jobs.length === 1
-            ? "Job"
-            : "Jobs"}
-        </span>
       </div>
+
+      {/* ====================================
+          ERROR
+      ===================================== */}
 
       {error && (
         <div className="dashboard-error">
-          <p>{error}</p>
-        </div>
-      )}
 
-      {loading && (
-        <div className="dashboard-state">
-          <div className="loading-spinner"></div>
           <p>
-            Loading saved jobs...
+            {error}
           </p>
+
         </div>
       )}
 
-      {!loading &&
-        !error &&
-        jobs.length === 0 && (
-          <div className="dashboard-empty">
+      {/* ====================================
+          EMPTY STATE
+      ===================================== */}
 
-            <div className="empty-icon">
-              🔖
-            </div>
+      {savedJobs.length === 0 && !error && (
+        <div className="dashboard-empty">
 
-            <h3>
-              No saved jobs
-            </h3>
+          <div className="empty-icon">
+            🔖
+          </div>
 
-            <p>
-              Save interesting jobs and
-              come back to them later.
-            </p>
+          <h3>
+            No saved jobs
+          </h3>
 
-            <button
-              type="button"
-              className="dashboard-primary-button"
-              onClick={() =>
-                navigate("/jobs")
-              }
+          <p>
+            Save interesting jobs and
+            come back to them later.
+          </p>
+
+          <Link
+            to="/jobs"
+            className="dashboard-primary-button"
+          >
+            Browse Jobs
+          </Link>
+
+        </div>
+      )}
+
+      {/* ====================================
+          SAVED JOB LIST
+      ===================================== */}
+
+      {savedJobs.length > 0 && (
+        <div className="application-list">
+
+          {savedJobs.map((job) => (
+            <article
+              key={job._id}
+              className="application-card"
             >
-              Browse Jobs
-            </button>
 
-          </div>
-        )}
+              {/* JOB DETAILS */}
 
-      {!loading &&
-        jobs.length > 0 && (
-          <div className="applications-list">
+              <div>
 
-            {jobs.map((job) => (
-              <article
-                className="application-card"
-                key={job._id}
-              >
+                <h3>
+                  {job.title ||
+                    "Untitled Job"}
+                </h3>
 
-                <div className="application-card-top">
+                <p>
+                  <strong>
+                    Company:
+                  </strong>{" "}
+                  {job.company ||
+                    "Not specified"}
+                </p>
 
-                  <div>
-                    <span className="application-label">
-                      Saved Job
-                    </span>
+                <p>
+                  <strong>
+                    Location:
+                  </strong>{" "}
+                  {job.location ||
+                    "Not specified"}
+                </p>
 
-                    <h3>
-                      {job.title ||
-                        "Job Title"}
-                    </h3>
-                  </div>
+                {job.jobType && (
+                  <p>
+                    <strong>
+                      Job Type:
+                    </strong>{" "}
+                    {job.jobType}
+                  </p>
+                )}
 
-                  <span className="job-type-badge">
-                    {job.jobType ||
-                      "Job"}
-                  </span>
+                {job.salary && (
+                  <p>
+                    <strong>
+                      Salary:
+                    </strong>{" "}
+                    {job.salary}
+                  </p>
+                )}
 
-                </div>
+              </div>
 
-                <div className="application-details">
+              {/* ACTIONS */}
 
-                  <div className="detail-item">
-                    <span className="detail-label">
-                      Company
-                    </span>
+              <div className="dashboard-actions">
 
-                    <span className="detail-value">
-                      {job.company ||
-                        "N/A"}
-                    </span>
-                  </div>
+                <Link
+                  to={`/jobs/${job._id}`}
+                  className="dashboard-primary-button"
+                >
+                  View Job
+                </Link>
 
-                  <div className="detail-item">
-                    <span className="detail-label">
-                      Location
-                    </span>
+                <button
+                  type="button"
+                  className="dashboard-secondary-button"
+                  onClick={() =>
+                    handleRemove(job._id)
+                  }
+                  disabled={
+                    removingId === job._id
+                  }
+                >
+                  {removingId === job._id
+                    ? "Removing..."
+                    : "Remove Saved"}
+                </button>
 
-                    <span className="detail-value">
-                      {job.location ||
-                        "N/A"}
-                    </span>
-                  </div>
+              </div>
 
-                  <div className="detail-item">
-                    <span className="detail-label">
-                      Salary
-                    </span>
+            </article>
+          ))}
 
-                    <span className="detail-value">
-                      {job.salary ||
-                        "Not specified"}
-                    </span>
-                  </div>
-
-                  <div className="detail-item">
-                    <span className="detail-label">
-                      Status
-                    </span>
-
-                    <span className="detail-value">
-                      {job.status ||
-                        "Open"}
-                    </span>
-                  </div>
-
-                </div>
-
-                <div className="application-actions">
-
-                  <button
-                    type="button"
-                    className="dashboard-primary-button"
-                    onClick={() =>
-                      navigate(
-                        `/jobs/${job._id}`
-                      )
-                    }
-                  >
-                    View Job
-                  </button>
-
-                  <button
-                    type="button"
-                    className="dashboard-danger-button"
-                    disabled={
-                      removing === job._id
-                    }
-                    onClick={() =>
-                      removeSavedJob(
-                        job._id
-                      )
-                    }
-                  >
-                    {removing === job._id
-                      ? "Removing..."
-                      : "Remove Saved"}
-                  </button>
-
-                </div>
-
-              </article>
-            ))}
-
-          </div>
-        )}
+        </div>
+      )}
 
     </section>
   );

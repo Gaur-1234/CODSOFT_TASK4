@@ -23,9 +23,16 @@ function JobDetails() {
   const [alreadyApplied, setAlreadyApplied] =
     useState(false);
 
-  const user = JSON.parse(
-    localStorage.getItem("user") || "null"
-  );
+  // Get logged-in user safely
+  let user = null;
+
+  try {
+    user = JSON.parse(
+      localStorage.getItem("user") || "null"
+    );
+  } catch (error) {
+    console.error("Unable to read user data:", error);
+  }
 
   const isCandidate =
     user?.role === "Candidate";
@@ -33,11 +40,13 @@ function JobDetails() {
   const isEmployer =
     user?.role === "Employer";
 
-  // ================================
-  // FETCH JOB
-  // ================================
+  // ==========================================
+  // FETCH JOB DETAILS
+  // ==========================================
 
   useEffect(() => {
+    let isMounted = true;
+
     const fetchJob = async () => {
       try {
         setLoading(true);
@@ -47,68 +56,100 @@ function JobDetails() {
           `/jobs/${id}`
         );
 
-        setJob(response.data.job);
+        const jobData =
+          response.data?.job ||
+          response.data;
+
+        if (isMounted) {
+          setJob(jobData);
+        }
       } catch (error) {
         console.error(
           "Error fetching job:",
           error
         );
 
-        setError(
-          error.response?.data?.message ||
-            "Unable to load job details."
-        );
+        if (isMounted) {
+          setError(
+            error.response?.data?.message ||
+              "Unable to load job details."
+          );
+        }
       } finally {
-        setLoading(false);
+        if (isMounted) {
+          setLoading(false);
+        }
       }
     };
 
     fetchJob();
+
+    return () => {
+      isMounted = false;
+    };
   }, [id]);
 
-  // ================================
+  // ==========================================
   // CHECK SAVED / APPLICATION STATUS
-  // ================================
+  // ==========================================
 
   useEffect(() => {
     if (!isCandidate) {
       return;
     }
 
+    let isMounted = true;
+
     const checkCandidateData = async () => {
       try {
-        const [savedResponse, applicationsResponse] =
-          await Promise.all([
-            API.get("/jobs/saved"),
-            API.get(
-              "/applications/my-applications"
-            ),
-          ]);
+        const [
+          savedResponse,
+          applicationsResponse,
+        ] = await Promise.all([
+          API.get("/jobs/saved"),
+          API.get("/applications/my-applications"),
+        ]);
 
         const savedJobs =
-          savedResponse.data.jobs || [];
+          savedResponse.data?.jobs ||
+          (Array.isArray(savedResponse.data)
+            ? savedResponse.data
+            : []);
 
         const applications =
-          applicationsResponse.data.applications ||
-          [];
-
-        setSaved(
-          savedJobs.some(
-            (savedJob) =>
-              savedJob._id === id
+          applicationsResponse.data?.applications ||
+          (Array.isArray(
+            applicationsResponse.data
           )
+            ? applicationsResponse.data
+            : []);
+
+        if (!isMounted) {
+          return;
+        }
+
+        // Check saved job
+        const isJobSaved = savedJobs.some(
+          (savedJob) =>
+            savedJob?._id === id ||
+            savedJob?.job?._id === id ||
+            savedJob?.job === id
         );
 
-        setAlreadyApplied(
+        setSaved(isJobSaved);
+
+        // Check already applied
+        const hasAlreadyApplied =
           applications.some(
             (application) =>
-              application.job?._id === id ||
-              application.job === id
-          )
+              application?.job?._id === id ||
+              application?.job === id
+          );
+
+        setAlreadyApplied(
+          hasAlreadyApplied
         );
       } catch (error) {
-        // Candidate may not be logged in.
-        // Do not block the job details page.
         console.error(
           "Unable to check candidate data:",
           error
@@ -117,11 +158,15 @@ function JobDetails() {
     };
 
     checkCandidateData();
+
+    return () => {
+      isMounted = false;
+    };
   }, [id, isCandidate]);
 
-  // ================================
+  // ==========================================
   // SAVE / UNSAVE JOB
-  // ================================
+  // ==========================================
 
   const handleSaveJob = async () => {
     if (!user) {
@@ -164,12 +209,24 @@ function JobDetails() {
     }
   };
 
-  // ================================
-  // APPLY FOR JOB
-  // ================================
+  // ==========================================
+  // HANDLE RESUME
+  // ==========================================
 
-  const handleApply = async (e) => {
-    e.preventDefault();
+  const handleResumeChange = (event) => {
+    const file =
+      event.target.files?.[0] || null;
+
+    setResume(file);
+    setApplyError("");
+  };
+
+  // ==========================================
+  // APPLY FOR JOB
+  // ==========================================
+
+  const handleApply = async (event) => {
+    event.preventDefault();
 
     setApplyMessage("");
     setApplyError("");
@@ -182,6 +239,13 @@ function JobDetails() {
     if (!isCandidate) {
       setApplyError(
         "Only candidates can apply for jobs."
+      );
+      return;
+    }
+
+    if (alreadyApplied) {
+      setApplyError(
+        "You have already applied for this job."
       );
       return;
     }
@@ -207,7 +271,10 @@ function JobDetails() {
       "coverLetter",
       coverLetter
     );
-    formData.append("resume", resume);
+    formData.append(
+      "resume",
+      resume
+    );
 
     try {
       setApplying(true);
@@ -218,7 +285,7 @@ function JobDetails() {
       );
 
       setApplyMessage(
-        response.data.message ||
+        response.data?.message ||
           "Application submitted successfully!"
       );
 
@@ -247,9 +314,9 @@ function JobDetails() {
     }
   };
 
-  // ================================
-  // LOADING
-  // ================================
+  // ==========================================
+  // LOADING STATE
+  // ==========================================
 
   if (loading) {
     return (
@@ -267,9 +334,9 @@ function JobDetails() {
     );
   }
 
-  // ================================
-  // ERROR
-  // ================================
+  // ==========================================
+  // ERROR STATE
+  // ==========================================
 
   if (error) {
     return (
@@ -299,9 +366,9 @@ function JobDetails() {
     );
   }
 
-  // ================================
+  // ==========================================
   // JOB NOT FOUND
-  // ================================
+  // ==========================================
 
   if (!job) {
     return (
@@ -338,6 +405,10 @@ function JobDetails() {
     );
   }
 
+  // ==========================================
+  // JOB DATA
+  // ==========================================
+
   const requirements =
     Array.isArray(job.requirements)
       ? job.requirements
@@ -346,12 +417,16 @@ function JobDetails() {
   const isClosed =
     job.status === "Closed";
 
+  // ==========================================
+  // MAIN PAGE
+  // ==========================================
+
   return (
     <main className="job-details-page">
 
-      {/* ================================
+      {/* ======================================
           JOB HEADER
-      ================================= */}
+      ======================================= */}
 
       <section className="job-details-header">
 
@@ -361,10 +436,13 @@ function JobDetails() {
             Job Opportunity
           </span>
 
-          <h1>{job.title}</h1>
+          <h1>
+            {job.title}
+          </h1>
 
           <h2>
-            {job.company}
+            {job.company ||
+              "Company"}
           </h2>
 
         </div>
@@ -400,9 +478,9 @@ function JobDetails() {
 
       </section>
 
-      {/* ================================
+      {/* ======================================
           JOB INFORMATION
-      ================================= */}
+      ======================================= */}
 
       <section className="job-details-card">
 
@@ -415,7 +493,8 @@ function JobDetails() {
             </span>
 
             <strong>
-              📍 {job.location}
+              📍 {job.location ||
+                "Not specified"}
             </strong>
 
           </div>
@@ -427,7 +506,8 @@ function JobDetails() {
             </span>
 
             <strong>
-              💼 {job.jobType}
+              💼 {job.jobType ||
+                "Not specified"}
             </strong>
 
           </div>
@@ -459,7 +539,8 @@ function JobDetails() {
                 ).toLowerCase()
               }`}
             >
-              {job.status || "Open"}
+              {job.status ||
+                "Open"}
             </span>
 
           </div>
@@ -468,9 +549,9 @@ function JobDetails() {
 
       </section>
 
-      {/* ================================
+      {/* ======================================
           DESCRIPTION
-      ================================= */}
+      ======================================= */}
 
       <section className="job-details-card">
 
@@ -479,14 +560,15 @@ function JobDetails() {
         </h2>
 
         <p className="job-description">
-          {job.description}
+          {job.description ||
+            "No job description provided."}
         </p>
 
       </section>
 
-      {/* ================================
+      {/* ======================================
           REQUIREMENTS
-      ================================= */}
+      ======================================= */}
 
       {requirements.length > 0 && (
         <section className="job-details-card">
@@ -510,9 +592,9 @@ function JobDetails() {
         </section>
       )}
 
-      {/* ================================
+      {/* ======================================
           EMPLOYER
-      ================================= */}
+      ======================================= */}
 
       {job.employer && (
         <section className="job-details-card">
@@ -524,6 +606,7 @@ function JobDetails() {
           <div className="employer-info">
 
             <div>
+
               <span className="detail-label">
                 Name
               </span>
@@ -532,9 +615,11 @@ function JobDetails() {
                 {job.employer.name ||
                   "Employer"}
               </strong>
+
             </div>
 
             <div>
+
               <span className="detail-label">
                 Email
               </span>
@@ -543,6 +628,7 @@ function JobDetails() {
                 {job.employer.email ||
                   "Not available"}
               </strong>
+
             </div>
 
           </div>
@@ -550,9 +636,9 @@ function JobDetails() {
         </section>
       )}
 
-      {/* ================================
+      {/* ======================================
           APPLY SECTION
-      ================================= */}
+      ======================================= */}
 
       {isCandidate && (
         <section className="job-details-card apply-job-card">
@@ -560,6 +646,7 @@ function JobDetails() {
           <div className="section-heading">
 
             <div>
+
               <h2>
                 Apply for this Job
               </h2>
@@ -568,9 +655,12 @@ function JobDetails() {
                 Submit your resume and
                 optional cover letter.
               </p>
+
             </div>
 
           </div>
+
+          {/* Already Applied */}
 
           {alreadyApplied ? (
 
@@ -581,8 +671,8 @@ function JobDetails() {
               </strong>
 
               <p>
-                You have already applied for
-                this position.
+                You have already applied
+                for this position.
               </p>
 
               <button
@@ -601,6 +691,8 @@ function JobDetails() {
 
           ) : isClosed ? (
 
+            /* Closed Job */
+
             <div className="dashboard-error">
 
               <strong>
@@ -617,6 +709,8 @@ function JobDetails() {
 
           ) : (
 
+            /* Application Form */
+
             <form
               onSubmit={handleApply}
               className="job-application-form"
@@ -632,18 +726,15 @@ function JobDetails() {
                   id="resume"
                   type="file"
                   accept=".pdf,.doc,.docx"
-                  onChange={(e) =>
-                    setResume(
-                      e.target.files?.[0] ||
-                        null
-                    )
+                  onChange={
+                    handleResumeChange
                   }
                   required
                 />
 
                 <small>
-                  Accepted formats: PDF, DOC,
-                  DOCX
+                  Accepted formats:
+                  PDF, DOC, DOCX
                 </small>
 
               </div>
@@ -658,9 +749,9 @@ function JobDetails() {
                   id="coverLetter"
                   placeholder="Write your cover letter..."
                   value={coverLetter}
-                  onChange={(e) =>
+                  onChange={(event) =>
                     setCoverLetter(
-                      e.target.value
+                      event.target.value
                     )
                   }
                   rows="7"
@@ -670,13 +761,17 @@ function JobDetails() {
 
               {applyError && (
                 <div className="dashboard-error">
-                  <p>{applyError}</p>
+                  <p>
+                    {applyError}
+                  </p>
                 </div>
               )}
 
               {applyMessage && (
                 <div className="dashboard-success">
-                  <p>{applyMessage}</p>
+                  <p>
+                    {applyMessage}
+                  </p>
                 </div>
               )}
 
@@ -697,9 +792,9 @@ function JobDetails() {
         </section>
       )}
 
-      {/* ================================
+      {/* ======================================
           EMPLOYER NOTICE
-      ================================= */}
+      ======================================= */}
 
       {isEmployer && (
         <section className="job-details-card">

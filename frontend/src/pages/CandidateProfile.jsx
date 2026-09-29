@@ -1,106 +1,98 @@
 import { useEffect, useState } from "react";
-import { useNavigate } from "react-router-dom";
+import { Link } from "react-router-dom";
 
 import API from "../services/api";
-
 import ProfileForm from "../components/ProfileForm";
-import SavedJobs from "../components/SavedJobs";
 import ApplicationStats from "../components/ApplicationStats";
+import SavedJobs from "../components/SavedJobs";
 
 function CandidateProfile() {
-  const navigate = useNavigate();
-
-  const [profile, setProfile] =
-    useState(null);
-
-  const [loading, setLoading] =
-    useState(true);
-
-  const [error, setError] =
-    useState("");
-
-  const fetchProfile = async () => {
-    try {
-      setLoading(true);
-      setError("");
-
-      const response = await API.get(
-        "/profile"
-      );
-
-      setProfile(
-        response.data.user ||
-          response.data.profile
-      );
-    } catch (err) {
-      setError(
-        err.response?.data?.message ||
-          "Unable to load your profile."
-      );
-    } finally {
-      setLoading(false);
-    }
-  };
+  const [profile, setProfile] = useState(null);
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState("");
 
   useEffect(() => {
-    // Intentional API data-fetching effect.
-    // eslint-disable-next-line react-hooks/set-state-in-effect
-    fetchProfile();
+    let cancelled = false;
+
+    const loadProfile = async () => {
+      try {
+        const response = await API.get("/profile");
+
+        if (cancelled) return;
+
+        setProfile(response.data);
+      } catch (err) {
+        if (cancelled) return;
+
+        console.error("Candidate profile error:", err);
+
+        setError(
+          err.response?.data?.message ||
+            "Unable to load your profile."
+        );
+      } finally {
+        if (!cancelled) {
+          setLoading(false);
+        }
+      }
+    };
+
+    loadProfile();
+
+    return () => {
+      cancelled = true;
+    };
   }, []);
 
-  const handleSaved = (updatedProfile) => {
-    setProfile(updatedProfile);
-
-    const storedUser = JSON.parse(
-      localStorage.getItem("user") ||
-        "null"
-    );
-
-    if (storedUser) {
-      localStorage.setItem(
-        "user",
-        JSON.stringify({
-          ...storedUser,
-          name:
-            updatedProfile?.name ||
-            storedUser.name,
-          email:
-            updatedProfile?.email ||
-            storedUser.email,
-        })
-      );
-    }
-  };
+  // ==========================================
+  // LOADING
+  // ==========================================
 
   if (loading) {
     return (
       <main className="dashboard-page">
-        <div className="dashboard-state">
-          <div className="loading-spinner"></div>
-          <p>
-            Loading your profile...
-          </p>
+        <div className="dashboard-container">
+          <div className="dashboard-header">
+            <span className="dashboard-eyebrow">
+              Candidate Profile
+            </span>
+
+            <h1>Loading Profile...</h1>
+
+            <p>
+              Please wait while we load your profile.
+            </p>
+          </div>
         </div>
       </main>
     );
   }
 
+  // ==========================================
+  // ERROR
+  // ==========================================
+
   if (error) {
     return (
       <main className="dashboard-page">
-        <div className="dashboard-error">
-          <strong>
-            Unable to load profile
-          </strong>
+        <div className="dashboard-container">
+          <div className="dashboard-header">
+            <span className="dashboard-eyebrow">
+              Candidate Profile
+            </span>
 
-          <p>{error}</p>
+            <h1>Unable to Load Profile</h1>
 
-          <button
-            type="button"
-            onClick={fetchProfile}
-          >
-            Try Again
-          </button>
+            <p>{error}</p>
+
+            <button
+              type="button"
+              className="dashboard-primary-button"
+              onClick={() => window.location.reload()}
+            >
+              Try Again
+            </button>
+          </div>
         </div>
       </main>
     );
@@ -108,46 +100,133 @@ function CandidateProfile() {
 
   return (
     <main className="dashboard-page">
+      <div className="dashboard-container">
 
-      <div className="dashboard-heading">
+        {/* PAGE HEADER */}
 
-        <div>
-          <span className="dashboard-eyebrow">
-            Candidate Portal
-          </span>
+        <section className="dashboard-header">
 
-          <h1>My Profile</h1>
+          <div>
+            <span className="dashboard-eyebrow">
+              Candidate Profile
+            </span>
 
-          <p>
-            Keep your professional information
-            up to date.
-          </p>
-        </div>
+            <h1>My Profile</h1>
 
-        <button
-          type="button"
-          className="dashboard-secondary-button"
-          onClick={() =>
-            navigate(
-              "/candidate-dashboard"
-            )
-          }
-        >
-          ← Dashboard
-        </button>
+            <p>
+              Manage your personal information,
+              professional details and job activity.
+            </p>
+          </div>
+
+          <div className="dashboard-actions">
+
+            <Link
+              to="/candidate-dashboard"
+              className="dashboard-secondary-button"
+            >
+              Dashboard
+            </Link>
+
+            <Link
+              to="/jobs"
+              className="dashboard-primary-button"
+            >
+              Browse Jobs
+            </Link>
+
+          </div>
+
+        </section>
+
+        {/* PROFILE */}
+
+        <section className="dashboard-section">
+
+          <div className="section-heading">
+
+            <div>
+              <h2>
+                Personal & Professional Details
+              </h2>
+
+              <p>
+                Keep your candidate profile
+                updated for employers.
+              </p>
+            </div>
+
+          </div>
+
+          <div className="dashboard-card">
+
+            <ProfileForm
+              mode="candidate"
+              initialData={profile}
+            />
+
+          </div>
+
+        </section>
+
+        {/* APPLICATION STATISTICS */}
+
+        <section className="dashboard-section">
+
+          <div className="section-heading">
+
+            <div>
+              <h2>
+                Application Statistics
+              </h2>
+
+              <p>
+                Track your job application activity.
+              </p>
+            </div>
+
+          </div>
+
+          <div className="dashboard-card">
+
+            <ApplicationStats />
+
+          </div>
+
+        </section>
+
+        {/* SAVED JOBS */}
+
+        <section className="dashboard-section">
+
+          <div className="section-heading">
+
+            <div>
+              <h2>Saved Jobs</h2>
+
+              <p>
+                Jobs you saved for later.
+              </p>
+            </div>
+
+            <Link
+              to="/jobs"
+              className="dashboard-secondary-button"
+            >
+              Find More Jobs
+            </Link>
+
+          </div>
+
+          <div className="dashboard-card">
+
+            <SavedJobs />
+
+          </div>
+
+        </section>
 
       </div>
-
-      <ProfileForm
-        mode="candidate"
-        profile={profile || {}}
-        onSaved={handleSaved}
-      />
-
-      <ApplicationStats />
-
-      <SavedJobs />
-
     </main>
   );
 }

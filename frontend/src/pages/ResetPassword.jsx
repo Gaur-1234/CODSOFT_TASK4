@@ -4,6 +4,7 @@ import {
   useNavigate,
   useParams,
 } from "react-router-dom";
+
 import API from "../services/api";
 
 function ResetPassword() {
@@ -18,11 +19,50 @@ function ResetPassword() {
   const [message, setMessage] = useState("");
   const [error, setError] = useState("");
 
-  const handleSubmit = async (e) => {
-    e.preventDefault();
+  // ==========================================
+  // HANDLE PASSWORD CHANGE
+  // ==========================================
+
+  const handlePasswordChange = (event) => {
+    setPassword(event.target.value);
+
+    if (error) {
+      setError("");
+    }
+
+    if (message) {
+      setMessage("");
+    }
+  };
+
+  const handleConfirmPasswordChange = (event) => {
+    setConfirmPassword(event.target.value);
+
+    if (error) {
+      setError("");
+    }
+
+    if (message) {
+      setMessage("");
+    }
+  };
+
+  // ==========================================
+  // RESET PASSWORD
+  // ==========================================
+
+  const handleSubmit = async (event) => {
+    event.preventDefault();
 
     setMessage("");
     setError("");
+
+    if (!token) {
+      setError(
+        "Invalid or missing password reset link."
+      );
+      return;
+    }
 
     if (password.length < 6) {
       setError(
@@ -32,7 +72,9 @@ function ResetPassword() {
     }
 
     if (password !== confirmPassword) {
-      setError("Passwords do not match.");
+      setError(
+        "Passwords do not match."
+      );
       return;
     }
 
@@ -47,20 +89,28 @@ function ResetPassword() {
       );
 
       setMessage(
-        response.data.message ||
+        response.data?.message ||
           "Password reset successfully."
       );
 
       setPassword("");
       setConfirmPassword("");
 
+      // Redirect to login after success
       setTimeout(() => {
-        navigate("/login");
+        navigate("/login", {
+          replace: true,
+        });
       }, 2000);
     } catch (err) {
+      console.error(
+        "Reset password error:",
+        err
+      );
+
       setError(
         err.response?.data?.message ||
-          "Unable to reset password. The link may be expired."
+          "Unable to reset password. The link may be expired or invalid."
       );
     } finally {
       setLoading(false);
@@ -69,37 +119,73 @@ function ResetPassword() {
 
   return (
     <main className="auth-page">
+
       <div className="auth-card">
 
+        {/* ====================================
+            HEADER
+        ===================================== */}
+
         <div className="auth-header">
+
           <span className="dashboard-eyebrow">
             Account Recovery
           </span>
 
-          <h1>Reset Password</h1>
+          <h1>
+            Reset Password
+          </h1>
 
           <p>
-            Create a new password for your account.
+            Create a new password for your
+            JobBoard account.
           </p>
+
         </div>
 
+        {/* ====================================
+            ERROR
+        ===================================== */}
+
         {error && (
-          <div className="auth-error">
+          <div
+            className="auth-error"
+            role="alert"
+          >
             {error}
           </div>
         )}
 
+        {/* ====================================
+            SUCCESS
+        ===================================== */}
+
         {message && (
-          <div className="auth-success">
+          <div
+            className="auth-success"
+            role="status"
+          >
             {message}
+
+            <br />
+
+            Redirecting you to login...
           </div>
         )}
+
+        {/* ====================================
+            RESET FORM
+        ===================================== */}
 
         <form
           onSubmit={handleSubmit}
           className="auth-form"
         >
+
+          {/* New Password */}
+
           <div className="form-group">
+
             <label htmlFor="password">
               New Password
             </label>
@@ -107,17 +193,29 @@ function ResetPassword() {
             <input
               id="password"
               type="password"
+              name="password"
               minLength={6}
-              placeholder="Minimum 6 characters"
+              placeholder="Enter new password"
               value={password}
-              onChange={(e) =>
-                setPassword(e.target.value)
+              onChange={
+                handlePasswordChange
               }
+              autoComplete="new-password"
+              disabled={loading}
               required
             />
+
+            <small>
+              Password must contain at least
+              6 characters.
+            </small>
+
           </div>
 
+          {/* Confirm Password */}
+
           <div className="form-group">
+
             <label htmlFor="confirmPassword">
               Confirm Password
             </label>
@@ -125,17 +223,21 @@ function ResetPassword() {
             <input
               id="confirmPassword"
               type="password"
+              name="confirmPassword"
               minLength={6}
               placeholder="Enter password again"
               value={confirmPassword}
-              onChange={(e) =>
-                setConfirmPassword(
-                  e.target.value
-                )
+              onChange={
+                handleConfirmPasswordChange
               }
+              autoComplete="new-password"
+              disabled={loading}
               required
             />
+
           </div>
+
+          {/* Submit */}
 
           <button
             type="submit"
@@ -146,15 +248,23 @@ function ResetPassword() {
               ? "Resetting..."
               : "Reset Password"}
           </button>
+
         </form>
 
+        {/* ====================================
+            FOOTER
+        ===================================== */}
+
         <div className="auth-footer">
+
           <Link to="/login">
-            Back to Login
+            ← Back to Login
           </Link>
+
         </div>
 
       </div>
+
     </main>
   );
 }

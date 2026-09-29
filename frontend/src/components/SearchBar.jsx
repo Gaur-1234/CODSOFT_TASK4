@@ -1,17 +1,74 @@
-function SearchBar({ search, setSearch, onSearch }) {
-  return (
-    <div className="search-bar">
-      <input
-        type="text"
-        placeholder="Search jobs, companies, skills..."
-        value={search}
-        onChange={(e) => setSearch(e.target.value)}
-      />
+import { useState } from "react";
 
-      <button type="button" onClick={onSearch}>
-        Search
-      </button>
-    </div>
+function SearchBar({
+  onSearch,
+  initialValue = "",
+}) {
+  const [searchTerm, setSearchTerm] =
+    useState(initialValue);
+
+  const handleSubmit = (event) => {
+    event.preventDefault();
+
+    if (onSearch) {
+      onSearch(searchTerm.trim());
+    }
+  };
+
+  const handleClear = () => {
+    setSearchTerm("");
+
+    if (onSearch) {
+      onSearch("");
+    }
+  };
+
+  return (
+    <form
+      className="search-bar"
+      onSubmit={handleSubmit}
+    >
+
+      {/* SEARCH INPUT */}
+
+      <div className="search-input-wrapper">
+
+        <input
+          type="text"
+          value={searchTerm}
+          onChange={(event) =>
+            setSearchTerm(event.target.value)
+          }
+          placeholder="Search jobs by title, company or keyword..."
+          aria-label="Search jobs"
+        />
+
+      </div>
+
+      {/* ACTIONS */}
+
+      <div className="search-actions">
+
+        <button
+          type="submit"
+          className="dashboard-primary-button"
+        >
+          Search
+        </button>
+
+        {searchTerm && (
+          <button
+            type="button"
+            className="dashboard-secondary-button"
+            onClick={handleClear}
+          >
+            Clear
+          </button>
+        )}
+
+      </div>
+
+    </form>
   );
 }
 

@@ -10,53 +10,65 @@ import ApplicantSearch from "../components/ApplicantSearch";
 function EmployerProfile() {
   const navigate = useNavigate();
 
-  const [profile, setProfile] =
-    useState(null);
+  const [profile, setProfile] = useState(null);
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState("");
 
-  const [loading, setLoading] =
-    useState(true);
+  // ==========================================
+  // LOAD EMPLOYER PROFILE
+  // ==========================================
 
-  const [error, setError] =
-    useState("");
+  useEffect(() => {
+    let cancelled = false;
 
-  const fetchProfile = async () => {
-    try {
-      setLoading(true);
-      setError("");
-
-      const response =
-        await API.get(
+    const loadProfile = async () => {
+      try {
+        const response = await API.get(
           "/employer/profile"
         );
 
-      setProfile(
-        response.data.user ||
-          response.data.profile
-      );
-    } catch (err) {
-      setError(
-        err.response?.data?.message ||
-          "Unable to load company profile."
-      );
-    } finally {
-      setLoading(false);
-    }
-  };
+        if (cancelled) return;
 
-  useEffect(() => {
-    // Intentional API data-fetching effect.
-    // eslint-disable-next-line react-hooks/set-state-in-effect
-    fetchProfile();
+        setProfile(
+          response.data.user ||
+            response.data.profile ||
+            {}
+        );
+      } catch (err) {
+        if (cancelled) return;
+
+        console.error(
+          "Employer profile error:",
+          err
+        );
+
+        setError(
+          err.response?.data?.message ||
+            "Unable to load company profile."
+        );
+      } finally {
+        if (!cancelled) {
+          setLoading(false);
+        }
+      }
+    };
+
+    loadProfile();
+
+    return () => {
+      cancelled = true;
+    };
   }, []);
 
-  const handleSaved = (
-    updatedProfile
-  ) => {
+  // ==========================================
+  // HANDLE PROFILE SAVE
+  // ==========================================
+
+  const handleSaved = (updatedProfile) => {
     setProfile(updatedProfile);
 
     const storedUser = JSON.parse(
-      localStorage.getItem("user") ||
-        "null"
+      localStorage.getItem("user") || "null"
     );
 
     if (storedUser) {
@@ -75,36 +87,93 @@ function EmployerProfile() {
     }
   };
 
+  // ==========================================
+  // LOADING
+  // ==========================================
+
   if (loading) {
     return (
       <main className="dashboard-page">
-        <div className="dashboard-state">
-          <div className="loading-spinner"></div>
-          <p>
-            Loading company profile...
-          </p>
+
+        <div className="dashboard-container">
+
+          <div className="dashboard-header">
+
+            <span className="dashboard-eyebrow">
+              Employer Portal
+            </span>
+
+            <h1>
+              Loading Company Profile...
+            </h1>
+
+            <p>
+              Please wait while we load your
+              company information.
+            </p>
+
+          </div>
+
         </div>
+
       </main>
     );
   }
 
+  // ==========================================
+  // ERROR
+  // ==========================================
+
   if (error) {
     return (
       <main className="dashboard-page">
-        <div className="dashboard-error">
-          <strong>
-            Unable to load profile
-          </strong>
 
-          <p>{error}</p>
+        <div className="dashboard-container">
 
-          <button
-            type="button"
-            onClick={fetchProfile}
-          >
-            Try Again
-          </button>
+          <div className="dashboard-header">
+
+            <span className="dashboard-eyebrow">
+              Employer Portal
+            </span>
+
+            <h1>
+              Unable to Load Profile
+            </h1>
+
+            <p>
+              {error}
+            </p>
+
+            <div className="dashboard-actions">
+
+              <button
+                type="button"
+                className="dashboard-secondary-button"
+                onClick={() =>
+                  navigate(
+                    "/employer-dashboard"
+                  )
+                }
+              >
+                ← Dashboard
+              </button>
+
+              <button
+                type="button"
+                className="dashboard-primary-button"
+                onClick={() =>
+                  window.location.reload()
+                }
+              >
+                Try Again
+              </button>
+
+            </div>
+
+          </div>
+
         </div>
+
       </main>
     );
   }
@@ -112,46 +181,82 @@ function EmployerProfile() {
   return (
     <main className="dashboard-page">
 
-      <div className="dashboard-heading">
+      <div className="dashboard-container">
 
-        <div>
-          <span className="dashboard-eyebrow">
-            Employer Portal
-          </span>
+        {/* ====================================
+            PAGE HEADER
+        ===================================== */}
 
-          <h1>
-            Company Profile
-          </h1>
+        <section className="dashboard-header">
 
-          <p>
-            Manage your company and employer
-            information.
-          </p>
-        </div>
+          <div>
 
-        <button
-          type="button"
-          className="dashboard-secondary-button"
-          onClick={() =>
-            navigate(
-              "/employer-dashboard"
-            )
-          }
-        >
-          ← Dashboard
-        </button>
+            <span className="dashboard-eyebrow">
+              Employer Portal
+            </span>
+
+            <h1>
+              Company Profile
+            </h1>
+
+            <p>
+              Manage your company and employer
+              information.
+            </p>
+
+          </div>
+
+          <div className="dashboard-actions">
+
+            <button
+              type="button"
+              className="dashboard-secondary-button"
+              onClick={() =>
+                navigate(
+                  "/employer-dashboard"
+                )
+              }
+            >
+              ← Dashboard
+            </button>
+
+            <button
+              type="button"
+              className="dashboard-primary-button"
+              onClick={() =>
+                navigate("/post-job")
+              }
+            >
+              + Post a Job
+            </button>
+
+          </div>
+
+        </section>
+
+        {/* ====================================
+            COMPANY PROFILE
+        ===================================== */}
+
+        <ProfileForm
+          mode="employer"
+          profile={profile || {}}
+          onSaved={handleSaved}
+        />
+
+        {/* ====================================
+            JOB STATISTICS
+        ===================================== */}
+
+        <JobStats />
+
+        {/* ====================================
+            APPLICANT SEARCH
+        ===================================== */}
+
+        <ApplicantSearch />
 
       </div>
-
-      <ProfileForm
-        mode="employer"
-        profile={profile || {}}
-        onSaved={handleSaved}
-      />
-
-      <JobStats />
-
-      <ApplicantSearch />
 
     </main>
   );

@@ -1,680 +1,471 @@
 import { useEffect, useState } from "react";
-import { useNavigate } from "react-router-dom";
+import { Link } from "react-router-dom";
+
 import API from "../services/api";
+import ApplicationStats from "../components/ApplicationStats";
+import SavedJobs from "../components/SavedJobs";
 
 function CandidateDashboard() {
-  const navigate = useNavigate();
-
   const [applications, setApplications] = useState([]);
-  const [stats, setStats] = useState({
-    totalApplications: 0,
-    applied: 0,
-    underReview: 0,
-    shortlisted: 0,
-    rejected: 0,
-  });
-
   const [loading, setLoading] = useState(true);
-  const [statsLoading, setStatsLoading] = useState(true);
   const [error, setError] = useState("");
-  const [statsError, setStatsError] = useState("");
 
-  const [actionLoading, setActionLoading] =
-    useState("");
+  useEffect(() => {
+    let cancelled = false;
 
-  const user = JSON.parse(
-    localStorage.getItem("user") || "null"
-  );
-
-  const fetchApplications = async () => {
-    try {
-      setLoading(true);
-      setError("");
-
-      const response = await API.get(
-        "/applications/my-applications"
-      );
-
-      setApplications(
-        response.data.applications || []
-      );
-    } catch (error) {
-      console.error(
-        "Error fetching applications:",
-        error
-      );
-
-      setError(
-        error.response?.data?.message ||
-          "Unable to load your applications."
-      );
-    } finally {
-      setLoading(false);
-    }
-  };
-
-  const fetchStats = async () => {
-    try {
-      setStatsLoading(true);
-      setStatsError("");
-
-      const response = await API.get(
-        "/applications/stats"
-      );
-
-      setStats(
-        response.data.stats || {
-          totalApplications: 0,
-          applied: 0,
-          underReview: 0,
-          shortlisted: 0,
-          rejected: 0,
-        }
-      );
-    } catch (error) {
-      console.error(
-        "Error fetching application stats:",
-        error
-      );
-
-      setStatsError(
-        error.response?.data?.message ||
-          "Unable to load application statistics."
-      );
-    } finally {
-      setStatsLoading(false);
-    }
-  };
-
-  const handleWithdraw = async (
-    applicationId
-  ) => {
-    const confirmed = window.confirm(
-      "Are you sure you want to withdraw this application?"
-    );
-
-    if (!confirmed) {
-      return;
-    }
-
-    try {
-      setActionLoading(applicationId);
-
-      await API.patch(
-        `/applications/${applicationId}/withdraw`
-      );
-
-      await Promise.all([
-        fetchApplications(),
-        fetchStats(),
-      ]);
-    } catch (error) {
-      console.error(
-        "Withdraw application error:",
-        error
-      );
-
-      window.alert(
-        error.response?.data?.message ||
-          "Unable to withdraw application."
-      );
-    } finally {
-      setActionLoading("");
-    }
-  };
-
-  const handleViewApplication = async (
-    applicationId
-  ) => {
-    try {
-      const response = await API.get(
-        `/applications/${applicationId}`
-      );
-
-      const application =
-        response.data.application;
-
-      if (application?.job?._id) {
-        navigate(
-          `/jobs/${application.job._id}`
+    const loadApplications = async () => {
+      try {
+        const response = await API.get(
+          "/applications/my-applications"
         );
-      }
-    } catch (error) {
-      console.error(
-        "Application details error:",
-        error
-      );
 
-      window.alert(
-        error.response?.data?.message ||
-          "Unable to load application details."
-      );
+        if (cancelled) return;
+
+        setApplications(
+          response.data?.applications ||
+            response.data ||
+            []
+        );
+      } catch (err) {
+        if (cancelled) return;
+
+        console.error(
+          "Candidate applications error:",
+          err
+        );
+
+        setError(
+          err.response?.data?.message ||
+            "Unable to load your applications."
+        );
+      } finally {
+        if (!cancelled) {
+          setLoading(false);
+        }
+      }
+    };
+
+    loadApplications();
+
+    return () => {
+      cancelled = true;
+    };
+  }, []);
+
+  // ==========================================
+  // STATUS CLASS
+  // ==========================================
+
+  const getStatusClass = (status) => {
+    switch (status) {
+      case "Applied":
+        return "status-badge status-applied";
+
+      case "Under Review":
+        return "status-badge status-review";
+
+      case "Shortlisted":
+        return "status-badge status-shortlisted";
+
+      case "Rejected":
+        return "status-badge status-rejected";
+
+      case "Withdrawn":
+        return "status-badge status-withdrawn";
+
+      default:
+        return "status-badge";
     }
   };
 
-useEffect(() => {
-  const loadDashboard = async () => {
-    await Promise.all([
-      fetchApplications(),
-      fetchStats(),
-    ]);
-  };
+  // ==========================================
+  // LOADING
+  // ==========================================
 
-  loadDashboard();
-}, []);
+  if (loading) {
+    return (
+      <main className="dashboard-page">
+        <div className="dashboard-container">
 
-  return (
-    <main className="dashboard-page">
+          <div className="dashboard-header">
 
-      {/* Dashboard Heading */}
-      <div className="dashboard-heading">
+            <span className="dashboard-eyebrow">
+              Candidate Dashboard
+            </span>
 
-        <div>
-          <span className="dashboard-eyebrow">
-            Candidate Portal
-          </span>
-
-          <h1>Candidate Dashboard</h1>
-
-          <p>
-            Welcome back,{" "}
-            <strong>
-              {user?.name || "Candidate"}
-            </strong>{" "}
-            👋
-          </p>
-        </div>
-
-        <div className="dashboard-heading-actions">
-
-          <button
-            type="button"
-            className="dashboard-secondary-button"
-            onClick={() =>
-              navigate("/candidate-profile")
-            }
-          >
-            My Profile
-          </button>
-
-          <button
-            type="button"
-            className="dashboard-primary-button"
-            onClick={() => navigate("/jobs")}
-          >
-            Browse Jobs
-          </button>
-
-        </div>
-
-      </div>
-
-      {/* Statistics */}
-      <section className="dashboard-section">
-
-        <div className="section-heading">
-          <div>
-            <h2>Application Overview</h2>
+            <h1>
+              Loading Dashboard...
+            </h1>
 
             <p>
-              Keep track of your job application
-              progress.
+              Please wait while we load your
+              application data.
             </p>
-          </div>
-        </div>
 
-        {statsError && (
-          <div className="dashboard-error">
-            <p>{statsError}</p>
-          </div>
-        )}
-
-        <div className="stats-grid">
-
-          <div className="stat-card">
-            <span className="stat-icon">
-              📋
-            </span>
-
-            <div>
-              <span className="stat-label">
-                Total Applications
-              </span>
-
-              <strong className="stat-value">
-                {statsLoading
-                  ? "..."
-                  : stats.totalApplications}
-              </strong>
-            </div>
-          </div>
-
-          <div className="stat-card">
-            <span className="stat-icon">
-              📨
-            </span>
-
-            <div>
-              <span className="stat-label">
-                Applied
-              </span>
-
-              <strong className="stat-value">
-                {statsLoading
-                  ? "..."
-                  : stats.applied}
-              </strong>
-            </div>
-          </div>
-
-          <div className="stat-card">
-            <span className="stat-icon">
-              🔎
-            </span>
-
-            <div>
-              <span className="stat-label">
-                Under Review
-              </span>
-
-              <strong className="stat-value">
-                {statsLoading
-                  ? "..."
-                  : stats.underReview}
-              </strong>
-            </div>
-          </div>
-
-          <div className="stat-card">
-            <span className="stat-icon">
-              ⭐
-            </span>
-
-            <div>
-              <span className="stat-label">
-                Shortlisted
-              </span>
-
-              <strong className="stat-value">
-                {statsLoading
-                  ? "..."
-                  : stats.shortlisted}
-              </strong>
-            </div>
-          </div>
-
-          <div className="stat-card">
-            <span className="stat-icon">
-              ❌
-            </span>
-
-            <div>
-              <span className="stat-label">
-                Rejected
-              </span>
-
-              <strong className="stat-value">
-                {statsLoading
-                  ? "..."
-                  : stats.rejected}
-              </strong>
-            </div>
           </div>
 
         </div>
+      </main>
+    );
+  }
 
-      </section>
+  // ==========================================
+  // ERROR
+  // ==========================================
 
-      {/* Quick Actions */}
-      <section className="dashboard-section">
+  if (error) {
+    return (
+      <main className="dashboard-page">
+        <div className="dashboard-container">
 
-        <div className="section-heading">
-          <div>
-            <h2>Quick Actions</h2>
+          <div className="dashboard-header">
+
+            <span className="dashboard-eyebrow">
+              Candidate Dashboard
+            </span>
+
+            <h1>
+              Unable to Load Dashboard
+            </h1>
 
             <p>
-              Manage your profile and discover
-              opportunities.
+              {error}
             </p>
-          </div>
-        </div>
-
-        <div className="quick-actions-grid">
-
-          <button
-            type="button"
-            className="quick-action-card"
-            onClick={() =>
-              navigate("/candidate-profile")
-            }
-          >
-            <span className="quick-action-icon">
-              👤
-            </span>
-
-            <span className="quick-action-title">
-              Edit Profile
-            </span>
-
-            <span className="quick-action-text">
-              Update your professional information.
-            </span>
-          </button>
-
-          <button
-            type="button"
-            className="quick-action-card"
-            onClick={() => navigate("/jobs")}
-          >
-            <span className="quick-action-icon">
-              🔎
-            </span>
-
-            <span className="quick-action-title">
-              Find Jobs
-            </span>
-
-            <span className="quick-action-text">
-              Explore new opportunities.
-            </span>
-          </button>
-
-          <button
-            type="button"
-            className="quick-action-card"
-            onClick={() =>
-              navigate("/change-password")
-            }
-          >
-            <span className="quick-action-icon">
-              🔐
-            </span>
-
-            <span className="quick-action-title">
-              Change Password
-            </span>
-
-            <span className="quick-action-text">
-              Keep your account secure.
-            </span>
-          </button>
-
-        </div>
-
-      </section>
-
-      {/* Applications */}
-      <section className="dashboard-section">
-
-        <div className="section-heading">
-
-          <div>
-            <h2>My Applications</h2>
-
-            <p>
-              Track the jobs you have applied for.
-            </p>
-          </div>
-
-          <span className="application-count">
-            {applications.length}{" "}
-            {applications.length === 1
-              ? "Application"
-              : "Applications"}
-          </span>
-
-        </div>
-
-        {/* Loading */}
-        {loading && (
-          <div className="dashboard-state">
-            <div className="loading-spinner"></div>
-
-            <p>
-              Loading your applications...
-            </p>
-          </div>
-        )}
-
-        {/* Error */}
-        {error && !loading && (
-          <div className="dashboard-error">
-
-            <strong>
-              Something went wrong
-            </strong>
-
-            <p>{error}</p>
 
             <button
               type="button"
-              onClick={() => {
-                fetchApplications();
-                fetchStats();
-              }}
+              className="dashboard-primary-button"
+              onClick={() => window.location.reload()}
             >
               Try Again
             </button>
 
           </div>
-        )}
 
-        {/* Empty */}
-        {!loading &&
-          !error &&
-          applications.length === 0 && (
-            <div className="dashboard-empty">
+        </div>
+      </main>
+    );
+  }
 
-              <div className="empty-icon">
-                💼
-              </div>
+  return (
+    <main className="dashboard-page">
+
+      <div className="dashboard-container">
+
+        {/* HEADER */}
+
+        <section className="dashboard-header">
+
+          <div>
+
+            <span className="dashboard-eyebrow">
+              Candidate Dashboard
+            </span>
+
+            <h1>
+              Welcome Back 👋
+            </h1>
+
+            <p>
+              Track your applications, manage
+              saved jobs and keep your profile
+              up to date.
+            </p>
+
+          </div>
+
+          <div className="dashboard-actions">
+
+            <Link
+              to="/jobs"
+              className="dashboard-primary-button"
+            >
+              Browse Jobs
+            </Link>
+
+            <Link
+              to="/candidate-profile"
+              className="dashboard-secondary-button"
+            >
+              My Profile
+            </Link>
+
+          </div>
+
+        </section>
+
+        {/* APPLICATION STATISTICS */}
+
+        <section className="dashboard-section">
+
+          <div className="section-heading">
+
+            <div>
+
+              <h2>
+                Application Overview
+              </h2>
+
+              <p>
+                See the current status of your
+                job applications.
+              </p>
+
+            </div>
+
+          </div>
+
+          <div className="dashboard-card">
+
+            <ApplicationStats />
+
+          </div>
+
+        </section>
+
+        {/* MY APPLICATIONS */}
+
+        <section className="dashboard-section">
+
+          <div className="section-heading">
+
+            <div>
+
+              <h2>
+                My Applications
+              </h2>
+
+              <p>
+                Review the jobs you have applied
+                for and their current status.
+              </p>
+
+            </div>
+
+          </div>
+
+          {applications.length === 0 ? (
+            <div className="dashboard-card empty-state">
 
               <h3>
-                No applications yet
+                No Applications Yet
               </h3>
 
               <p>
-                Find a job that matches your skills
-                and start your application.
+                You haven't applied for any jobs
+                yet. Explore available opportunities
+                and submit your first application.
               </p>
 
-              <button
-                type="button"
+              <Link
+                to="/jobs"
                 className="dashboard-primary-button"
-                onClick={() => navigate("/jobs")}
               >
-                Explore Jobs
-              </button>
+                Browse Jobs
+              </Link>
 
             </div>
-          )}
-
-        {/* Applications */}
-        {!loading &&
-          !error &&
-          applications.length > 0 && (
+          ) : (
             <div className="applications-list">
 
-              {applications.map(
-                (application) => {
+              {applications.map((application) => {
 
-                  const status =
-                    application.status ||
-                    "Applied";
+                const job =
+                  application.job || {};
 
-                  const canWithdraw =
-                    status === "Applied" ||
-                    status === "Under Review";
+                const company =
+                  job.company ||
+                  job.employer?.companyName ||
+                  "Company";
 
-                  return (
-                    <article
-                      className="application-card"
-                      key={application._id}
-                    >
+                return (
+                  <article
+                    className="application-card"
+                    key={
+                      application._id ||
+                      application.id
+                    }
+                  >
 
-                      <div className="application-card-top">
+                    <div className="application-card-content">
 
-                        <div>
-                          <span className="application-label">
-                            Application
-                          </span>
+                      <div>
 
-                          <h3>
-                            {application.job
-                              ?.title ||
-                              "Job Title"}
-                          </h3>
-                        </div>
+                        <h3>
+                          {job.title ||
+                            "Job Position"}
+                        </h3>
 
-                        <span
-                          className={`status-badge status-${status
-                            .toLowerCase()
-                            .replace(/\s+/g, "-")}`}
+                        <p className="application-company">
+                          {company}
+                        </p>
+
+                        {job.location && (
+                          <p>
+                            📍 {job.location}
+                          </p>
+                        )}
+
+                        {job.jobType && (
+                          <p>
+                            💼 {job.jobType}
+                          </p>
+                        )}
+
+                      </div>
+
+                      <span
+                        className={getStatusClass(
+                          application.status
+                        )}
+                      >
+                        {application.status ||
+                          "Applied"}
+                      </span>
+
+                    </div>
+
+                    <div className="application-card-footer">
+
+                      <div>
+
+                        {application.createdAt && (
+                          <small>
+                            Applied on{" "}
+                            {new Date(
+                              application.createdAt
+                            ).toLocaleDateString()}
+                          </small>
+                        )}
+
+                      </div>
+
+                      {job._id && (
+                        <Link
+                          to={`/jobs/${job._id}`}
+                          className="dashboard-secondary-button"
                         >
-                          {status}
-                        </span>
-
-                      </div>
-
-                      <div className="application-details">
-
-                        <div className="detail-item">
-                          <span className="detail-label">
-                            Company
-                          </span>
-
-                          <span className="detail-value">
-                            {application.job
-                              ?.company || "N/A"}
-                          </span>
-                        </div>
-
-                        <div className="detail-item">
-                          <span className="detail-label">
-                            Location
-                          </span>
-
-                          <span className="detail-value">
-                            {application.job
-                              ?.location || "N/A"}
-                          </span>
-                        </div>
-
-                        <div className="detail-item">
-                          <span className="detail-label">
-                            Job Type
-                          </span>
-
-                          <span className="detail-value">
-                            {application.job
-                              ?.jobType || "N/A"}
-                          </span>
-                        </div>
-
-                        <div className="detail-item">
-                          <span className="detail-label">
-                            Applied On
-                          </span>
-
-                          <span className="detail-value">
-                            {application.createdAt
-                              ? new Date(
-                                  application.createdAt
-                                ).toLocaleDateString(
-                                  "en-IN",
-                                  {
-                                    day: "2-digit",
-                                    month: "short",
-                                    year: "numeric",
-                                  }
-                                )
-                              : "N/A"}
-                          </span>
-                        </div>
-
-                      </div>
-
-                      {/* Resume */}
-                      {application.resumeFileName && (
-                        <div className="resume-info">
-
-                          <span>📄</span>
-
-                          <div>
-                            <span className="detail-label">
-                              Resume
-                            </span>
-
-                            <span className="detail-value">
-                              {
-                                application.resumeFileName
-                              }
-                            </span>
-                          </div>
-
-                        </div>
+                          View Job
+                        </Link>
                       )}
 
-                      <div className="application-actions">
+                    </div>
 
-                        {application.job?._id && (
-                          <button
-                            type="button"
-                            className="dashboard-primary-button"
-                            onClick={() =>
-                              navigate(
-                                `/jobs/${application.job._id}`
-                              )
-                            }
-                          >
-                            View Job
-                          </button>
-                        )}
-
-                        <button
-                          type="button"
-                          className="dashboard-secondary-button"
-                          onClick={() =>
-                            handleViewApplication(
-                              application._id
-                            )
-                          }
-                        >
-                          View Application
-                        </button>
-
-                        {canWithdraw && (
-                          <button
-                            type="button"
-                            className="dashboard-danger-button"
-                            disabled={
-                              actionLoading ===
-                              application._id
-                            }
-                            onClick={() =>
-                              handleWithdraw(
-                                application._id
-                              )
-                            }
-                          >
-                            {actionLoading ===
-                            application._id
-                              ? "Withdrawing..."
-                              : "Withdraw"}
-                          </button>
-                        )}
-
-                      </div>
-
-                    </article>
-                  );
-                }
-              )}
+                  </article>
+                );
+              })}
 
             </div>
           )}
 
-      </section>
+        </section>
+
+        {/* SAVED JOBS */}
+
+        <section className="dashboard-section">
+
+          <div className="section-heading">
+
+            <div>
+
+              <h2>
+                Saved Jobs
+              </h2>
+
+              <p>
+                Quickly access opportunities
+                you've saved for later.
+              </p>
+
+            </div>
+
+            <Link
+              to="/jobs"
+              className="dashboard-secondary-button"
+            >
+              Find Jobs
+            </Link>
+
+          </div>
+
+          <div className="dashboard-card">
+
+            <SavedJobs />
+
+          </div>
+
+        </section>
+
+        {/* QUICK ACTIONS */}
+
+        <section className="dashboard-section">
+
+          <div className="section-heading">
+
+            <div>
+
+              <h2>
+                Quick Actions
+              </h2>
+
+              <p>
+                Manage your candidate account
+                from one place.
+              </p>
+
+            </div>
+
+          </div>
+
+          <div className="dashboard-grid">
+
+            <Link
+              to="/jobs"
+              className="dashboard-action-card"
+            >
+              <h3>
+                Browse Jobs
+              </h3>
+
+              <p>
+                Search and explore available
+                job opportunities.
+              </p>
+            </Link>
+
+            <Link
+              to="/candidate-profile"
+              className="dashboard-action-card"
+            >
+              <h3>
+                Update Profile
+              </h3>
+
+              <p>
+                Keep your professional information
+                updated.
+              </p>
+            </Link>
+
+            <Link
+              to="/change-password"
+              className="dashboard-action-card"
+            >
+              <h3>
+                Change Password
+              </h3>
+
+              <p>
+                Update your account password
+                and security settings.
+              </p>
+            </Link>
+
+          </div>
+
+        </section>
+
+      </div>
 
     </main>
   );

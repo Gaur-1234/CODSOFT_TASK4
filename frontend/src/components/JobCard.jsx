@@ -1,34 +1,86 @@
 import { Link } from "react-router-dom";
 
 function JobCard({ job }) {
+  if (!job) {
+    return null;
+  }
+
   return (
-    <div className="job-card">
-      <h3>{job.title}</h3>
+    <article className="job-card">
 
-      <p>
-        <strong>Company:</strong>{" "}
-        {job.company}
-      </p>
+      {/* ====================================
+          JOB INFORMATION
+      ===================================== */}
 
-      <p>
-        <strong>Location:</strong>{" "}
-        {job.location}
-      </p>
+      <div className="job-card-content">
 
-      <p>
-        <strong>Job Type:</strong>{" "}
-        {job.jobType}
-      </p>
+        <h3>
+          {job.title || "Untitled Job"}
+        </h3>
 
-      <p>
-        <strong>Salary:</strong>{" "}
-        {job.salary || "Not specified"}
-      </p>
+        <p className="job-company">
+          {job.company ||
+            "Company not specified"}
+        </p>
 
-      <Link to={`/jobs/${job._id}`}>
-        View Details
-      </Link>
-    </div>
+        <p className="job-location">
+          📍{" "}
+          {job.location ||
+            "Location not specified"}
+        </p>
+
+        {/* JOB TYPE */}
+
+        {job.jobType && (
+          <p className="job-type">
+            <strong>
+              Job Type:
+            </strong>{" "}
+            {job.jobType}
+          </p>
+        )}
+
+        {/* SALARY */}
+
+        {job.salary && (
+          <p className="job-salary">
+            <strong>
+              Salary:
+            </strong>{" "}
+            {job.salary}
+          </p>
+        )}
+
+        {/* STATUS */}
+
+        {job.status && (
+          <span
+            className={`status-badge status-${job.status
+              .toLowerCase()
+              .replace(/\s+/g, "-")}`}
+          >
+            {job.status}
+          </span>
+        )}
+
+      </div>
+
+      {/* ====================================
+          ACTION
+      ===================================== */}
+
+      <div className="job-card-actions">
+
+        <Link
+          to={`/jobs/${job._id}`}
+          className="dashboard-primary-button"
+        >
+          View Details
+        </Link>
+
+      </div>
+
+    </article>
   );
 }
 

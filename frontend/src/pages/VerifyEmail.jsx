@@ -1,49 +1,58 @@
 import { useEffect, useState } from "react";
-import {
-  useNavigate,
-  useParams,
-} from "react-router-dom";
+import { Link, useNavigate, useParams } from "react-router-dom";
+
 import API from "../services/api";
 
 function VerifyEmail() {
   const { token } = useParams();
   const navigate = useNavigate();
 
-  const [status, setStatus] =
-    useState("verifying");
-
-  const [message, setMessage] =
-    useState("");
+  const [status, setStatus] = useState("verifying");
+  const [message, setMessage] = useState("");
 
   useEffect(() => {
     let isMounted = true;
 
     const verifyEmail = async () => {
+      if (!token) {
+        if (isMounted) {
+          setStatus("error");
+          setMessage("Invalid email verification link.");
+        }
+        return;
+      }
+
       try {
         const response = await API.get(
           `/auth/verify-email/${token}`
         );
 
-        if (!isMounted) {
-          return;
-        }
+        if (!isMounted) return;
 
         setStatus("success");
-
         setMessage(
-          response.data.message ||
-            "Email verified successfully."
+          response.data?.message ||
+            "Your email has been verified successfully."
         );
+
+        // Redirect to login after successful verification
+        setTimeout(() => {
+          if (isMounted) {
+            navigate("/login");
+          }
+        }, 2000);
       } catch (err) {
-        if (!isMounted) {
-          return;
-        }
+        console.error(
+          "Email verification error:",
+          err
+        );
+
+        if (!isMounted) return;
 
         setStatus("error");
-
         setMessage(
           err.response?.data?.message ||
-            "Unable to verify email. The link may be expired."
+            "Email verification failed. The link may be invalid or expired."
         );
       }
     };
@@ -53,74 +62,85 @@ function VerifyEmail() {
     return () => {
       isMounted = false;
     };
-  }, [token]);
+  }, [token, navigate]);
 
   return (
     <main className="auth-page">
-
       <div className="auth-card">
 
         <div className="auth-header">
-
           <span className="dashboard-eyebrow">
-            Email Verification
+            Account Verification
           </span>
 
           <h1>
-            {status === "verifying"
-              ? "Verifying Email"
-              : status === "success"
-              ? "Email Verified"
-              : "Verification Failed"}
+            Verify Your Email
           </h1>
 
           <p>
-            {status === "verifying"
-              ? "Please wait while we verify your email."
-              : message}
+            We are verifying your email address.
           </p>
-
         </div>
 
+        {/* Verifying */}
+
         {status === "verifying" && (
-          <div className="dashboard-state">
-
-            <div className="loading-spinner"></div>
-
+          <div className="auth-message">
             <p>
-              Verifying...
+              Verifying your email, please wait...
             </p>
-
           </div>
         )}
+
+        {/* Success */}
 
         {status === "success" && (
-          <div className="auth-success">
-            Your email has been verified
-            successfully.
+          <div
+            className="auth-success"
+            role="status"
+          >
+            <p>
+              {message}
+            </p>
+
+            <p>
+              Redirecting you to the login page...
+            </p>
           </div>
         )}
+
+        {/* Error */}
 
         {status === "error" && (
-          <div className="auth-error">
-            {message}
+          <div
+            className="auth-error"
+            role="alert"
+          >
+            <p>
+              {message}
+            </p>
           </div>
         )}
 
-        {status !== "verifying" && (
-          <button
-            type="button"
-            className="auth-button"
-            onClick={() =>
-              navigate("/login")
-            }
-          >
-            Go to Login
-          </button>
+        {/* Actions */}
+
+        {status === "error" && (
+          <div className="auth-footer">
+
+            <Link to="/login">
+              ← Back to Login
+            </Link>
+
+            <span> | </span>
+
+            <Link to="/register">
+              Create New Account
+            </Link>
+
+          </div>
         )}
 
       </div>
-
     </main>
   );
 }

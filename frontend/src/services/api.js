@@ -1,7 +1,9 @@
 import axios from "axios";
 
+const BASE_URL = "https://job-board-backend-hd1e.onrender.com/api";
+
 const API = axios.create({
-  baseURL: "https://job-board-backend-hd1e.onrender.com/api",
+  baseURL: BASE_URL,
 });
 
 // Add access token to every request
@@ -15,32 +17,28 @@ API.interceptors.request.use(
 
     return config;
   },
-  (error) => {
-    return Promise.reject(error);
-  }
+  (error) => Promise.reject(error)
 );
 
 // Automatically refresh expired access token
 API.interceptors.response.use(
-  (response) => {
-    return response;
-  },
+  (response) => response,
+
   async (error) => {
     const originalRequest = error.config;
 
     // Prevent infinite refresh loop
     if (
       error.response?.status === 401 &&
+      originalRequest &&
       !originalRequest._retry &&
-      !originalRequest.url?.includes(
-        "/auth/refresh-token"
-      )
+      !originalRequest.url?.includes("/auth/refresh-token")
     ) {
       originalRequest._retry = true;
 
-      const refreshToken =
-        localStorage.getItem("refreshToken");
+      const refreshToken = localStorage.getItem("refreshToken");
 
+      // No refresh token -> logout
       if (!refreshToken) {
         localStorage.removeItem("accessToken");
         localStorage.removeItem("refreshToken");
@@ -53,23 +51,24 @@ API.interceptors.response.use(
 
       try {
         const response = await axios.post(
-          "https://job-board-backend-hdle.onrender.com/api/auth/refresh-token",
+          `${BASE_URL}/auth/refresh-token`,
           {
             refreshToken,
           }
         );
 
-        const newAccessToken =
-          response.data.accessToken;
+        const newAccessToken = response.data.accessToken;
 
-        localStorage.setItem(
-          "accessToken",
-          newAccessToken
-        );
+        localStorage.setItem("accessToken", newAccessToken);
+
+        // Add new token to original failed request
+        originalRequest.headers =
+          originalRequest.headers || {};
 
         originalRequest.headers.Authorization =
           `Bearer ${newAccessToken}`;
 
+        // Retry original request
         return API(originalRequest);
       } catch (refreshError) {
         localStorage.removeItem("accessToken");
@@ -85,6 +84,5 @@ API.interceptors.response.use(
     return Promise.reject(error);
   }
 );
-
 
 export default API;

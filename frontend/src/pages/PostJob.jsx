@@ -1,378 +1,123 @@
 import { useState } from "react";
 import { useNavigate } from "react-router-dom";
+
 import API from "../services/api";
 
 function PostJob() {
   const navigate = useNavigate();
 
-  const [title, setTitle] = useState("");
-  const [company, setCompany] = useState("");
-  const [location, setLocation] = useState("");
-  const [description, setDescription] =
-    useState("");
-  const [requirements, setRequirements] =
-    useState("");
-  const [salary, setSalary] = useState("");
-  const [jobType, setJobType] =
-    useState("Full-time");
+  const [formData, setFormData] = useState({
+    title: "",
+    company: "",
+    location: "",
+    description: "",
+    requirements: "",
+    salary: "",
+    jobType: "Full-time",
+  });
 
-  const [loading, setLoading] =
-    useState(false);
+  const [loading, setLoading] = useState(false);
+  const [error, setError] = useState("");
+  const [message, setMessage] = useState("");
 
-  const [error, setError] =
-    useState("");
+  // ==========================================
+  // HANDLE INPUT
+  // ==========================================
 
-  const [success, setSuccess] =
-    useState("");
+  const handleChange = (event) => {
+    const { name, value } = event.target;
 
-  const user = JSON.parse(
-    localStorage.getItem("user") || "null"
-  );
+    setFormData((previous) => ({
+      ...previous,
+      [name]: value,
+    }));
+  };
 
-  // ================================
+  // ==========================================
   // SUBMIT JOB
-  // ================================
+  // ==========================================
 
-  const handleSubmit = async (e) => {
-    e.preventDefault();
+  const handleSubmit = async (event) => {
+    event.preventDefault();
 
     setLoading(true);
     setError("");
-    setSuccess("");
-
-    if (!user) {
-      setError(
-        "Please login as an employer first."
-      );
-
-      setLoading(false);
-      return;
-    }
-
-    if (user.role !== "Employer") {
-      setError(
-        "Only employers can post jobs."
-      );
-
-      setLoading(false);
-      return;
-    }
+    setMessage("");
 
     try {
-      const requirementsArray =
-        requirements
-          .split(",")
-          .map((item) => item.trim())
-          .filter(
-            (item) => item !== ""
-          );
-
       const response = await API.post(
         "/jobs",
-        {
-          title,
-          company,
-          location,
-          description,
-          requirements:
-            requirementsArray,
-          salary:
-            salary || "Not specified",
-          jobType,
-        }
+        formData
       );
 
-      setSuccess(
+      setMessage(
         response.data.message ||
-          "Job posted successfully!"
+          "Job posted successfully."
       );
 
-      // Reset form
-      setTitle("");
-      setCompany("");
-      setLocation("");
-      setDescription("");
-      setRequirements("");
-      setSalary("");
-      setJobType("Full-time");
+      setFormData({
+        title: "",
+        company: "",
+        location: "",
+        description: "",
+        requirements: "",
+        salary: "",
+        jobType: "Full-time",
+      });
 
+      // Redirect after successful creation
       setTimeout(() => {
-        navigate(
-          "/employer-dashboard"
-        );
-      }, 1200);
-    } catch (error) {
+        navigate("/employer-dashboard");
+      }, 1000);
+    } catch (err) {
       console.error(
-        "Error posting job:",
-        error
+        "Post job error:",
+        err
       );
 
       setError(
-        error.response?.data?.message ||
-          "Unable to post job. Please try again."
+        err.response?.data?.message ||
+          "Unable to post the job."
       );
     } finally {
       setLoading(false);
     }
   };
 
+  // ==========================================
+  // RENDER
+  // ==========================================
+
   return (
-    <main className="post-job-page">
+    <main className="dashboard-page">
 
-      {/* ================================
-          PAGE HEADER
-      ================================= */}
+      <div className="dashboard-container">
 
-      <div className="dashboard-heading">
+        {/* ====================================
+            PAGE HEADER
+        ===================================== */}
 
-        <div>
+        <section className="dashboard-header">
 
-          <span className="dashboard-eyebrow">
-            Employer Portal
-          </span>
+          <div>
 
-          <h1>Post a Job</h1>
+            <span className="dashboard-eyebrow">
+              Employer Portal
+            </span>
 
-          <p>
-            Create a new job listing and
-            connect with candidates.
-          </p>
+            <h1>
+              Post a New Job
+            </h1>
 
-        </div>
-
-        <button
-          type="button"
-          className="dashboard-secondary-button"
-          onClick={() =>
-            navigate(
-              "/employer-dashboard"
-            )
-          }
-        >
-          ← Dashboard
-        </button>
-
-      </div>
-
-      {/* ================================
-          FORM
-      ================================= */}
-
-      <section className="post-job-card">
-
-        <form
-          onSubmit={handleSubmit}
-          className="post-job-form"
-        >
-
-          {/* JOB TITLE */}
-
-          <div className="form-group">
-
-            <label htmlFor="title">
-              Job Title
-            </label>
-
-            <input
-              id="title"
-              type="text"
-              placeholder="e.g. Frontend Developer"
-              value={title}
-              onChange={(e) =>
-                setTitle(e.target.value)
-              }
-              required
-            />
+            <p>
+              Create a job listing and start
+              receiving applications from
+              qualified candidates.
+            </p>
 
           </div>
 
-          {/* COMPANY */}
-
-          <div className="form-group">
-
-            <label htmlFor="company">
-              Company
-            </label>
-
-            <input
-              id="company"
-              type="text"
-              placeholder="Company name"
-              value={company}
-              onChange={(e) =>
-                setCompany(e.target.value)
-              }
-              required
-            />
-
-          </div>
-
-          {/* LOCATION */}
-
-          <div className="form-group">
-
-            <label htmlFor="location">
-              Location
-            </label>
-
-            <input
-              id="location"
-              type="text"
-              placeholder="e.g. Delhi / Remote"
-              value={location}
-              onChange={(e) =>
-                setLocation(e.target.value)
-              }
-              required
-            />
-
-          </div>
-
-          {/* JOB TYPE */}
-
-          <div className="form-group">
-
-            <label htmlFor="jobType">
-              Job Type
-            </label>
-
-            <select
-              id="jobType"
-              value={jobType}
-              onChange={(e) =>
-                setJobType(
-                  e.target.value
-                )
-              }
-              required
-            >
-
-              <option value="Full-time">
-                Full-time
-              </option>
-
-              <option value="Part-time">
-                Part-time
-              </option>
-
-              <option value="Internship">
-                Internship
-              </option>
-
-              <option value="Contract">
-                Contract
-              </option>
-
-            </select>
-
-          </div>
-
-          {/* SALARY */}
-
-          <div className="form-group">
-
-            <label htmlFor="salary">
-              Salary
-            </label>
-
-            <input
-              id="salary"
-              type="text"
-              placeholder="e.g. ₹6-9 LPA"
-              value={salary}
-              onChange={(e) =>
-                setSalary(
-                  e.target.value
-                )
-              }
-            />
-
-            <small>
-              Leave blank if salary is not
-              disclosed.
-            </small>
-
-          </div>
-
-          {/* DESCRIPTION */}
-
-          <div className="form-group">
-
-            <label htmlFor="description">
-              Job Description
-            </label>
-
-            <textarea
-              id="description"
-              placeholder="Describe the role, responsibilities and expectations..."
-              value={description}
-              onChange={(e) =>
-                setDescription(
-                  e.target.value
-                )
-              }
-              rows="8"
-              required
-            />
-
-          </div>
-
-          {/* REQUIREMENTS */}
-
-          <div className="form-group">
-
-            <label htmlFor="requirements">
-              Requirements
-            </label>
-
-            <input
-              id="requirements"
-              type="text"
-              placeholder="React, JavaScript, Node.js, MongoDB"
-              value={requirements}
-              onChange={(e) =>
-                setRequirements(
-                  e.target.value
-                )
-              }
-            />
-
-            <small>
-              Separate requirements with
-              commas.
-            </small>
-
-          </div>
-
-          {/* MESSAGES */}
-
-          {error && (
-            <div className="dashboard-error">
-
-              <strong>
-                Unable to post job
-              </strong>
-
-              <p>{error}</p>
-
-            </div>
-          )}
-
-          {success && (
-            <div className="dashboard-success">
-
-              <strong>
-                Job posted successfully
-              </strong>
-
-              <p>{success}</p>
-
-            </div>
-          )}
-
-          {/* ACTIONS */}
-
-          <div className="post-job-actions">
+          <div className="dashboard-actions">
 
             <button
               type="button"
@@ -382,26 +127,277 @@ function PostJob() {
                   "/employer-dashboard"
                 )
               }
-              disabled={loading}
             >
-              Cancel
-            </button>
-
-            <button
-              type="submit"
-              className="dashboard-primary-button"
-              disabled={loading}
-            >
-              {loading
-                ? "Posting Job..."
-                : "Post Job"}
+              ← Dashboard
             </button>
 
           </div>
 
-        </form>
+        </section>
 
-      </section>
+        {/* ====================================
+            SUCCESS MESSAGE
+        ===================================== */}
+
+        {message && (
+          <div className="dashboard-success">
+
+            <p>
+              {message}
+            </p>
+
+          </div>
+        )}
+
+        {/* ====================================
+            ERROR MESSAGE
+        ===================================== */}
+
+        {error && (
+          <div className="dashboard-error">
+
+            <p>
+              {error}
+            </p>
+
+          </div>
+        )}
+
+        {/* ====================================
+            JOB FORM
+        ===================================== */}
+
+        <section className="dashboard-section">
+
+          <div className="section-heading">
+
+            <div>
+
+              <h2>
+                Job Details
+              </h2>
+
+              <p>
+                Provide accurate information
+                about the position.
+              </p>
+
+            </div>
+
+          </div>
+
+          <div className="dashboard-card">
+
+            <form
+              onSubmit={handleSubmit}
+              className="profile-form"
+            >
+
+              <div className="profile-form-grid">
+
+                {/* JOB TITLE */}
+
+                <div className="form-group">
+
+                  <label htmlFor="title">
+                    Job Title *
+                  </label>
+
+                  <input
+                    id="title"
+                    name="title"
+                    type="text"
+                    value={formData.title}
+                    onChange={handleChange}
+                    placeholder="e.g. Frontend Developer"
+                    required
+                    disabled={loading}
+                  />
+
+                </div>
+
+                {/* COMPANY */}
+
+                <div className="form-group">
+
+                  <label htmlFor="company">
+                    Company *
+                  </label>
+
+                  <input
+                    id="company"
+                    name="company"
+                    type="text"
+                    value={formData.company}
+                    onChange={handleChange}
+                    placeholder="e.g. Gaur Automation"
+                    required
+                    disabled={loading}
+                  />
+
+                </div>
+
+                {/* LOCATION */}
+
+                <div className="form-group">
+
+                  <label htmlFor="location">
+                    Location *
+                  </label>
+
+                  <input
+                    id="location"
+                    name="location"
+                    type="text"
+                    value={formData.location}
+                    onChange={handleChange}
+                    placeholder="e.g. Delhi / Remote"
+                    required
+                    disabled={loading}
+                  />
+
+                </div>
+
+                {/* JOB TYPE */}
+
+                <div className="form-group">
+
+                  <label htmlFor="jobType">
+                    Job Type *
+                  </label>
+
+                  <select
+                    id="jobType"
+                    name="jobType"
+                    value={formData.jobType}
+                    onChange={handleChange}
+                    disabled={loading}
+                  >
+
+                    <option value="Full-time">
+                      Full-time
+                    </option>
+
+                    <option value="Part-time">
+                      Part-time
+                    </option>
+
+                    <option value="Internship">
+                      Internship
+                    </option>
+
+                    <option value="Contract">
+                      Contract
+                    </option>
+
+                    <option value="Freelance">
+                      Freelance
+                    </option>
+
+                  </select>
+
+                </div>
+
+                {/* SALARY */}
+
+                <div className="form-group">
+
+                  <label htmlFor="salary">
+                    Salary
+                  </label>
+
+                  <input
+                    id="salary"
+                    name="salary"
+                    type="text"
+                    value={formData.salary}
+                    onChange={handleChange}
+                    placeholder="e.g. ₹6 - ₹10 LPA"
+                    disabled={loading}
+                  />
+
+                </div>
+
+              </div>
+
+              {/* DESCRIPTION */}
+
+              <div className="form-group">
+
+                <label htmlFor="description">
+                  Job Description *
+                </label>
+
+                <textarea
+                  id="description"
+                  name="description"
+                  rows="7"
+                  value={formData.description}
+                  onChange={handleChange}
+                  placeholder="Describe the role, responsibilities and expectations..."
+                  required
+                  disabled={loading}
+                />
+
+              </div>
+
+              {/* REQUIREMENTS */}
+
+              <div className="form-group">
+
+                <label htmlFor="requirements">
+                  Requirements *
+                </label>
+
+                <textarea
+                  id="requirements"
+                  name="requirements"
+                  rows="7"
+                  value={formData.requirements}
+                  onChange={handleChange}
+                  placeholder="List the required skills, qualifications and experience..."
+                  required
+                  disabled={loading}
+                />
+
+              </div>
+
+              {/* ACTIONS */}
+
+              <div className="dashboard-actions">
+
+                <button
+                  type="button"
+                  className="dashboard-secondary-button"
+                  onClick={() =>
+                    navigate(
+                      "/employer-dashboard"
+                    )
+                  }
+                  disabled={loading}
+                >
+                  Cancel
+                </button>
+
+                <button
+                  type="submit"
+                  className="dashboard-primary-button"
+                  disabled={loading}
+                >
+                  {loading
+                    ? "Posting Job..."
+                    : "Post Job"}
+                </button>
+
+              </div>
+
+            </form>
+
+          </div>
+
+        </section>
+
+      </div>
 
     </main>
   );

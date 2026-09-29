@@ -1,91 +1,144 @@
 import { useEffect, useState } from "react";
-import { Link } from "react-router-dom";
+import { useNavigate } from "react-router-dom";
+
 import API from "../services/api";
 import JobCard from "../components/JobCard";
 
 function Home() {
+  const navigate = useNavigate();
+
   const [jobs, setJobs] = useState([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState("");
 
   useEffect(() => {
-    const fetchFeaturedJobs = async () => {
+    let isMounted = true;
+
+    const fetchJobs = async () => {
       try {
+        setLoading(true);
         setError("");
 
         const response = await API.get("/jobs");
 
-        // Show latest 3 jobs as featured jobs
-        setJobs(response.data.jobs.slice(0, 3));
-      } catch (error) {
-        console.error(
-          "Error fetching featured jobs:",
-          error
-        );
+        const jobsData = Array.isArray(response.data)
+          ? response.data
+          : response.data.jobs || [];
 
-        setError("Unable to load featured jobs.");
+        if (isMounted) {
+          setJobs(jobsData);
+        }
+      } catch (err) {
+        console.error("Failed to fetch jobs:", err);
+
+        if (isMounted) {
+          setError(
+            err.response?.data?.message ||
+              "Unable to load jobs. Please try again."
+          );
+        }
       } finally {
-        setLoading(false);
+        if (isMounted) {
+          setLoading(false);
+        }
       }
     };
 
-    fetchFeaturedJobs();
+    fetchJobs();
+
+    return () => {
+      isMounted = false;
+    };
   }, []);
 
+  const featuredJobs = jobs.slice(0, 3);
+
   return (
-    <div className="home-page">
-      <section className="hero">
-        <h1>Find Your Dream Job</h1>
+    <div className="page-container">
 
-        <p>
-          Discover opportunities, connect with employers,
-          and take the next step in your career.
-        </p>
+      <section className="home-hero">
+        <div className="home-hero-content">
+          <h1>Find Your Next Opportunity</h1>
 
-        <Link to="/jobs" className="hero-button">
-          Explore Jobs
-        </Link>
+          <p>
+            Discover jobs, connect with employers, and take
+            the next step in your career.
+          </p>
+
+          <div className="page-actions">
+            <button
+              type="button"
+              onClick={() => navigate("/jobs")}
+              className="dashboard-primary-button"
+            >
+              Browse Jobs
+            </button>
+
+            <button
+              type="button"
+              onClick={() => navigate("/register")}
+              className="dashboard-secondary-button"
+            >
+              Create Account
+            </button>
+          </div>
+        </div>
       </section>
 
-      <section className="featured-section">
-        <h2>Featured Jobs</h2>
+      <section className="page-section">
 
-        <p>
-          Explore the latest opportunities from companies
-          looking for talented candidates.
-        </p>
+        <div className="page-header">
+          <div>
+            <h2>Latest Job Opportunities</h2>
+            <p>
+              Explore the latest opportunities available on
+              JobBoard.
+            </p>
+          </div>
 
-        {loading && <p>Loading featured jobs...</p>}
+          <button
+            type="button"
+            onClick={() => navigate("/jobs")}
+            className="dashboard-secondary-button"
+          >
+            View All Jobs
+          </button>
+        </div>
 
-        {error && (
-          <p style={{ color: "red" }}>
-            {error}
-          </p>
+        {loading && (
+          <div className="loading-state">
+            <p>Loading jobs...</p>
+          </div>
         )}
 
-        {!loading &&
-          !error &&
-          jobs.length === 0 && (
-            <p>No featured jobs available.</p>
-          )}
+        {!loading && error && (
+          <div className="error-state">
+            <p>{error}</p>
+          </div>
+        )}
 
-        {!loading &&
-          !error &&
-          jobs.length > 0 && (
-            <div className="jobs-list">
-              {jobs.map((job) => (
-                <JobCard
-                  key={job._id}
-                  job={job}
-                />
-              ))}
-            </div>
-          )}
+        {!loading && !error && featuredJobs.length === 0 && (
+          <div className="empty-state">
+            <h3>No jobs available</h3>
+            <p>
+              There are currently no job openings available.
+            </p>
+          </div>
+        )}
 
-        <Link to="/jobs">
-          View All Jobs
-        </Link>
+        {!loading && !error && featuredJobs.length > 0 && (
+          <div className="jobs-grid">
+            {featuredJobs.map((job) => (
+              <JobCard
+                key={job._id}
+                job={job}
+              />
+            ))}
+          </div>
+        )}
+
       </section>
+
     </div>
   );
 }
