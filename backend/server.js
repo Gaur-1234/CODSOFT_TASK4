@@ -8,6 +8,7 @@ const jobRoutes = require("./routes/jobRoutes");
 const applicationRoutes = require("./routes/applicationRoutes");
 const profileRoutes = require("./routes/profileRoutes");
 const employerRoutes = require("./routes/employerRoutes");
+const mediaRoutes = require("./routes/mediaRoutes");
 
 
 
@@ -30,7 +31,7 @@ app.use("/api/jobs", jobRoutes);
 app.use("/api/applications", applicationRoutes);
 app.use("/api/profile", profileRoutes);
 app.use("/api/employer", employerRoutes);
-
+app.use("/api/media", mediaRoutes);
 
 // Test Route
 app.get("/", (req, res) => {

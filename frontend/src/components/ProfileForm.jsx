@@ -1,59 +1,8 @@
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import API from "../services/api";
 
-function createFormData(profile = {}, isEmployer = false) {
-  if (isEmployer) {
-    return {
-      name: profile?.name || "",
-      email: profile?.email || "",
-      phone: profile?.phone || "",
-      location: profile?.location || "",
-      skills: profile?.skills || "",
-      education: profile?.education || "",
-      experience: profile?.experience || "",
-      linkedin: profile?.linkedin || "",
-      github: profile?.github || "",
-      portfolio: profile?.portfolio || "",
-
-      companyName: profile?.companyName || "",
-      companyWebsite:
-        profile?.companyWebsite || "",
-      industry: profile?.industry || "",
-      companyLocation:
-        profile?.companyLocation || "",
-      companyDescription:
-        profile?.companyDescription || "",
-      companyLinkedin:
-        profile?.companyLinkedin || "",
-    };
-  }
-
-  return {
-    name: profile?.name || "",
-    email: profile?.email || "",
-    phone: profile?.phone || "",
-    location: profile?.location || "",
-    skills: Array.isArray(profile?.skills)
-      ? profile.skills.join(", ")
-      : profile?.skills || "",
-    education: profile?.education || "",
-    experience: profile?.experience || "",
-    linkedin: profile?.linkedin || "",
-    github: profile?.github || "",
-    portfolio: profile?.portfolio || "",
-
-    companyName: profile?.companyName || "",
-    companyWebsite:
-      profile?.companyWebsite || "",
-    industry: profile?.industry || "",
-    companyLocation:
-      profile?.companyLocation || "",
-    companyDescription:
-      profile?.companyDescription || "",
-    companyLinkedin:
-      profile?.companyLinkedin || "",
-  };
-}
+const BASE_URL =
+  "https://job-board-backend-hd1e.onrender.com";
 
 function ProfileForm({
   mode = "candidate",
@@ -62,107 +11,148 @@ function ProfileForm({
 }) {
   const isEmployer = mode === "employer";
 
-  // Local form data starts as null.
-  // Until the API profile is loaded, the form
-  // automatically uses the profile prop.
-  const [formData, setFormData] =
-    useState(null);
+  // ==========================================
+  // FORM DATA
+  // ==========================================
 
-  const [selectedFile, setSelectedFile] =
-    useState(null);
+  const [formData, setFormData] = useState({
+    name: "",
+    email: "",
+    phone: "",
+    location: "",
 
-  const [loading, setLoading] =
-    useState(false);
+    // Candidate
+    skills: "",
+    education: "",
+    experience: "",
+    linkedin: "",
+    github: "",
+    portfolio: "",
 
-  const [uploading, setUploading] =
-    useState(false);
+    // Employer
+    companyName: "",
+    companyWebsite: "",
+    industry: "",
+    companyLocation: "",
+    companyDescription: "",
+    companyLinkedin: "",
+  });
 
-  const [deleting, setDeleting] =
-    useState(false);
+  // ==========================================
+  // IMAGE STATES
+  // ==========================================
 
-  const [message, setMessage] =
+  const [photo, setPhoto] = useState(null);
+  const [photoPreview, setPhotoPreview] =
     useState("");
 
-  const [error, setError] =
-    useState("");
-
   // ==========================================
-  // CURRENT FORM DATA
+  // LOADING / MESSAGE
   // ==========================================
 
-  const currentFormData =
-    formData ??
-    createFormData(
-      profile,
-      isEmployer
-    );
+  const [loading, setLoading] = useState(false);
+  const [photoLoading, setPhotoLoading] =
+    useState(false);
+
+  const [message, setMessage] = useState("");
+  const [error, setError] = useState("");
 
   // ==========================================
-  // HANDLE INPUT CHANGE
+  // SYNC PROFILE DATA
   // ==========================================
 
-  const handleChange = (event) => {
-    const { name, value } =
-      event.target;
+  useEffect(() => {
+    const updatedFormData = {
+      name: profile?.name || "",
+      email: profile?.email || "",
+      phone: profile?.phone || "",
+      location: profile?.location || "",
 
-    setFormData((previous) => ({
-      ...(previous ??
-        createFormData(
-          profile,
-          isEmployer
-        )),
-      [name]: value,
-    }));
+      skills: profile?.skills || "",
+      education: profile?.education || "",
+      experience: profile?.experience || "",
+      linkedin: profile?.linkedin || "",
+      github: profile?.github || "",
+      portfolio: profile?.portfolio || "",
+
+      companyName:
+        profile?.companyName || "",
+
+      companyWebsite:
+        profile?.companyWebsite || "",
+
+      industry:
+        profile?.industry || "",
+
+      companyLocation:
+        profile?.companyLocation || "",
+
+      companyDescription:
+        profile?.companyDescription || "",
+
+      companyLinkedin:
+        profile?.companyLinkedin || "",
+    };
+
+    // Profile data comes from API asynchronously.
+    // Syncing form state with loaded profile is intentional.
+    // eslint-disable-next-line react-hooks/set-state-in-effect
+    setFormData(updatedFormData);
+  }, [profile]);
+
+  // ==========================================
+  // IMAGE URL
+  // ==========================================
+
+  const getImageUrl = (fileId) => {
+    if (!fileId) {
+      return "";
+    }
+
+    // If already a complete URL
+    if (
+      typeof fileId === "string" &&
+      fileId.startsWith("http")
+    ) {
+      return fileId;
+    }
+
+    // GridFS image
+    return `${BASE_URL}/api/media/${fileId}`;
   };
 
   // ==========================================
-  // HANDLE FILE CHANGE
+  // FORM CHANGE
   // ==========================================
 
-  const handleFileChange = (event) => {
-    const file =
-      event.target.files?.[0] || null;
+  const handleChange = (e) => {
+    const { name, value } = e.target;
 
-    setSelectedFile(file);
-
-    setMessage("");
-    setError("");
+    setFormData((previous) => ({
+      ...previous,
+      [name]: value,
+    }));
   };
 
   // ==========================================
   // SAVE PROFILE
   // ==========================================
 
-  const handleSubmit = async (event) => {
-    event.preventDefault();
+  const handleSubmit = async (e) => {
+    e.preventDefault();
+
+    setLoading(true);
+    setMessage("");
+    setError("");
 
     try {
-      setLoading(true);
-      setMessage("");
-      setError("");
-
       const endpoint = isEmployer
         ? "/employer/profile"
         : "/profile";
 
-      const payload = {
-        ...currentFormData,
-      };
-
-      // Convert candidate skills
-      // from comma-separated text to array.
-      if (!isEmployer) {
-        payload.skills = currentFormData.skills
-          ? currentFormData.skills
-              .split(",")
-              .map((skill) => skill.trim())
-              .filter(Boolean)
-          : [];
-      }
-
       const response = await API.put(
         endpoint,
-        payload
+        formData
       );
 
       const updatedProfile =
@@ -170,23 +160,12 @@ function ProfileForm({
         response.data.profile ||
         response.data;
 
-      // Keep local form synchronized
-      // with the updated profile.
-      setFormData(
-        createFormData(
-          updatedProfile,
-          isEmployer
-        )
-      );
-
       setMessage(
         response.data.message ||
           "Profile updated successfully."
       );
 
-      if (onSaved) {
-        onSaved(updatedProfile);
-      }
+      onSaved?.(updatedProfile);
     } catch (err) {
       console.error(
         "Profile update error:",
@@ -203,48 +182,64 @@ function ProfileForm({
   };
 
   // ==========================================
-  // UPLOAD PHOTO / COMPANY LOGO
+  // SELECT IMAGE
+  // ==========================================
+
+  const handlePhotoChange = (e) => {
+    const file =
+      e.target.files?.[0] || null;
+
+    setPhoto(file);
+    setMessage("");
+    setError("");
+
+    if (file) {
+      // Show selected image immediately
+      setPhotoPreview(
+        URL.createObjectURL(file)
+      );
+    } else {
+      setPhotoPreview("");
+    }
+  };
+
+  // ==========================================
+  // UPLOAD IMAGE
   // ==========================================
 
   const handleUpload = async () => {
-    if (!selectedFile) {
+    if (!photo) {
       setError(
         isEmployer
-          ? "Please select a company logo."
-          : "Please select a profile photo."
+          ? "Please select a company logo first."
+          : "Please select a profile photo first."
       );
 
       return;
     }
 
+    setPhotoLoading(true);
+    setMessage("");
+    setError("");
+
     try {
-      setUploading(true);
-      setMessage("");
-      setError("");
+      const data = new FormData();
 
-      const uploadData =
-        new FormData();
-
-      uploadData.append(
-        isEmployer
-          ? "logo"
-          : "photo",
-        selectedFile
-      );
+      // Candidate -> photo
+      // Employer -> logo
+      const fieldName = isEmployer
+        ? "logo"
+        : "photo";
 
       const endpoint = isEmployer
         ? "/employer/logo"
         : "/profile/photo";
 
+      data.append(fieldName, photo);
+
       const response = await API.post(
         endpoint,
-        uploadData,
-        {
-          headers: {
-            "Content-Type":
-              "multipart/form-data",
-          },
-        }
+        data
       );
 
       const updatedProfile =
@@ -252,50 +247,65 @@ function ProfileForm({
         response.data.profile ||
         response.data;
 
-      setFormData(
-        createFormData(
-          updatedProfile,
-          isEmployer
-        )
-      );
-
-      setSelectedFile(null);
-
       setMessage(
         response.data.message ||
-          (isEmployer
-            ? "Company logo uploaded successfully."
-            : "Profile photo uploaded successfully.")
+          (
+            isEmployer
+              ? "Company logo uploaded successfully."
+              : "Profile photo uploaded successfully."
+          )
       );
 
-      if (onSaved) {
-        onSaved(updatedProfile);
+      // Update parent profile
+      onSaved?.(updatedProfile);
+
+      // Clear selected file
+      setPhoto(null);
+
+      // Clear local preview.
+      // Existing GridFS image will now be displayed.
+      setPhotoPreview("");
+
+      // Clear file input
+      const fileInput =
+        document.getElementById(
+          isEmployer
+            ? "companyLogoInput"
+            : "profilePhotoInput"
+        );
+
+      if (fileInput) {
+        fileInput.value = "";
       }
     } catch (err) {
       console.error(
-        "Profile image upload error:",
+        "Image upload error:",
         err
       );
 
       setError(
         err.response?.data?.message ||
-          "Unable to upload image."
+          (
+            isEmployer
+              ? "Unable to upload company logo."
+              : "Unable to upload profile photo."
+          )
       );
     } finally {
-      setUploading(false);
+      setPhotoLoading(false);
     }
   };
 
   // ==========================================
-  // DELETE PHOTO / LOGO
+  // DELETE IMAGE
   // ==========================================
 
-  const handleDeleteImage = async () => {
-    try {
-      setDeleting(true);
-      setMessage("");
-      setError("");
+  const handleDeletePhoto = async () => {
+    setPhotoLoading(true);
+    setMessage("");
+    setError("");
 
+    try {
       const endpoint = isEmployer
         ? "/employer/logo"
         : "/profile/photo";
@@ -309,599 +319,393 @@ function ProfileForm({
         response.data.profile ||
         response.data;
 
-      setFormData(
-        createFormData(
-          updatedProfile,
-          isEmployer
-        )
-      );
-
       setMessage(
         response.data.message ||
-          (isEmployer
-            ? "Company logo removed successfully."
-            : "Profile photo removed successfully.")
+          (
+            isEmployer
+              ? "Company logo removed successfully."
+              : "Profile photo removed successfully."
+          )
       );
 
-      if (onSaved) {
-        onSaved(updatedProfile);
+      onSaved?.(updatedProfile);
+
+      setPhoto(null);
+      setPhotoPreview("");
+
+      const fileInput =
+        document.getElementById(
+          isEmployer
+            ? "companyLogoInput"
+            : "profilePhotoInput"
+        );
+
+      if (fileInput) {
+        fileInput.value = "";
       }
     } catch (err) {
       console.error(
-        "Profile image delete error:",
+        "Image delete error:",
         err
       );
 
       setError(
         err.response?.data?.message ||
-          "Unable to remove image."
+          (
+            isEmployer
+              ? "Unable to remove company logo."
+              : "Unable to remove profile photo."
+          )
       );
     } finally {
-      setDeleting(false);
+      setPhotoLoading(false);
     }
   };
 
   // ==========================================
-  // PROFILE IMAGE
+  // FIELDS
   // ==========================================
 
-  const profileImage =
-    profile?.profilePhoto ||
-    profile?.companyLogo ||
-    "";
+  const candidateFields = [
+    ["name", "Full Name", "text"],
+    ["email", "Email", "email"],
+    ["phone", "Phone", "tel"],
+    ["location", "Location", "text"],
+    ["skills", "Skills", "text"],
+    ["education", "Education", "text"],
+    ["linkedin", "LinkedIn", "url"],
+    ["github", "GitHub", "url"],
+    ["portfolio", "Portfolio", "url"],
+  ];
+
+  const employerFields = [
+    ["name", "Contact Name", "text"],
+    ["email", "Email", "email"],
+    ["phone", "Phone", "tel"],
+    ["companyName", "Company Name", "text"],
+    [
+      "companyWebsite",
+      "Company Website",
+      "url",
+    ],
+    ["industry", "Industry", "text"],
+    [
+      "companyLocation",
+      "Company Location",
+      "text",
+    ],
+    [
+      "companyLinkedin",
+      "Company LinkedIn",
+      "url",
+    ],
+  ];
+
+  const fields = isEmployer
+    ? employerFields
+    : candidateFields;
+
+  // ==========================================
+  // EXISTING IMAGE
+  // ==========================================
+
+  const existingImage = isEmployer
+    ? profile?.companyLogo
+    : profile?.profilePhoto;
+
+  // ==========================================
+  // IMAGE URL TO DISPLAY
+  // ==========================================
+
+  const displayedImage =
+    photoPreview ||
+    getImageUrl(existingImage);
+
+  // ==========================================
+  // UI
+  // ==========================================
 
   return (
     <section className="dashboard-section">
 
-      {/* ====================================
-          HEADER
-      ===================================== */}
+      {/* ======================================
+          SECTION HEADER
+      ======================================= */}
 
       <div className="section-heading">
-
         <div>
-
           <h2>
             {isEmployer
-              ? "Company Profile"
-              : "Your Profile"}
+              ? "Company Information"
+              : "Professional Information"}
           </h2>
 
           <p>
             {isEmployer
-              ? "Manage your company information and logo."
-              : "Keep your personal and professional information updated."}
+              ? "Keep your company information and logo up to date."
+              : "Keep your professional information and profile photo up to date."}
           </p>
-
         </div>
-
       </div>
 
-      {/* ====================================
-          SUCCESS MESSAGE
-      ===================================== */}
-
-      {message && (
-        <div className="dashboard-success">
-
-          <p>
-            {message}
-          </p>
-
-        </div>
-      )}
-
-      {/* ====================================
-          ERROR MESSAGE
-      ===================================== */}
+      {/* ======================================
+          ERROR
+      ======================================= */}
 
       {error && (
         <div className="dashboard-error">
-
-          <p>
-            {error}
-          </p>
-
+          <p>{error}</p>
         </div>
       )}
 
-      {/* ====================================
-          PROFILE IMAGE
-      ===================================== */}
+      {/* ======================================
+          SUCCESS
+      ======================================= */}
 
-      <div className="dashboard-card">
+      {message && (
+        <div className="dashboard-success">
+          <p>{message}</p>
+        </div>
+      )}
 
-        <h3>
-          {isEmployer
-            ? "Company Logo"
-            : "Profile Photo"}
-        </h3>
+      {/* ======================================
+          PROFILE FORM
+      ======================================= */}
 
-        {profileImage && (
-          <div className="profile-image-preview">
+      <form
+        onSubmit={handleSubmit}
+        className="profile-form"
+      >
 
-            <img
-              src={profileImage}
-              alt={
-                isEmployer
-                  ? "Company logo"
-                  : "Profile"
+        <div className="profile-form-grid">
+
+          {fields.map(
+            ([name, label, type]) => (
+              <div
+                className="form-group"
+                key={name}
+              >
+
+                <label htmlFor={name}>
+                  {label}
+                </label>
+
+                <input
+                  id={name}
+                  name={name}
+                  type={type}
+                  value={
+                    formData[name] || ""
+                  }
+                  onChange={handleChange}
+                  disabled={
+                    loading ||
+                    (
+                      name === "email" &&
+                      Boolean(
+                        profile?.email
+                      )
+                    )
+                  }
+                />
+
+              </div>
+            )
+          )}
+
+        </div>
+
+        {/* ====================================
+            CANDIDATE EXTRA FIELDS
+        ===================================== */}
+
+        {!isEmployer && (
+          <>
+            <div className="form-group">
+
+              <label htmlFor="candidateExperience">
+                Experience Details
+              </label>
+
+              <textarea
+                id="candidateExperience"
+                name="experience"
+                rows="5"
+                value={
+                  formData.experience || ""
+                }
+                onChange={handleChange}
+                placeholder="Describe your experience..."
+                disabled={loading}
+              />
+
+            </div>
+
+            <div className="form-group">
+
+              <label htmlFor="candidateSkills">
+                Skills
+              </label>
+
+              <textarea
+                id="candidateSkills"
+                name="skills"
+                rows="4"
+                value={
+                  formData.skills || ""
+                }
+                onChange={handleChange}
+                placeholder="React, JavaScript, Node.js, MongoDB..."
+                disabled={loading}
+              />
+
+            </div>
+          </>
+        )}
+
+        {/* ====================================
+            EMPLOYER COMPANY DESCRIPTION
+        ===================================== */}
+
+        {isEmployer && (
+          <div className="form-group">
+
+            <label htmlFor="companyDescription">
+              Company Description
+            </label>
+
+            <textarea
+              id="companyDescription"
+              name="companyDescription"
+              rows="6"
+              value={
+                formData.companyDescription ||
+                ""
               }
+              onChange={handleChange}
+              placeholder="Describe your company..."
+              disabled={loading}
             />
 
           </div>
         )}
 
-        <div className="form-group">
+        {/* ====================================
+            SAVE PROFILE
+        ===================================== */}
 
-          <label htmlFor="profileImage">
+        <button
+          type="submit"
+          className="dashboard-primary-button"
+          disabled={loading}
+        >
+          {loading
+            ? "Saving..."
+            : "Save Profile"}
+        </button>
+
+      </form>
+
+      {/* ======================================
+          IMAGE SECTION
+      ======================================= */}
+
+      <div className="profile-media-section">
+
+        <div>
+          <h3>
             {isEmployer
-              ? "Choose Company Logo"
-              : "Choose Profile Photo"}
-          </label>
+              ? "Company Logo"
+              : "Profile Photo"}
+          </h3>
 
-          <input
-            id="profileImage"
-            type="file"
-            accept="image/*"
-            onChange={handleFileChange}
-          />
-
+          <p>
+            JPG, PNG or WEBP • Maximum 2MB
+          </p>
         </div>
 
-        <div className="dashboard-actions">
+        {/* ====================================
+            IMAGE PREVIEW
+        ===================================== */}
+
+        {displayedImage && (
+          <div className="profile-image-preview">
+
+            <img
+              src={displayedImage}
+              alt={
+                isEmployer
+                  ? "Company Logo"
+                  : "Profile Photo"
+              }
+              className="profile-media-image"
+              onError={(e) => {
+                console.error(
+                  "Image failed to load:",
+                  displayedImage
+                );
+
+                e.currentTarget.style.display =
+                  "none";
+              }}
+            />
+
+          </div>
+        )}
+
+        {/* ====================================
+            FILE INPUT
+        ===================================== */}
+
+        <input
+          id={
+            isEmployer
+              ? "companyLogoInput"
+              : "profilePhotoInput"
+          }
+          type="file"
+          accept="image/jpeg,image/png,image/webp"
+          onChange={handlePhotoChange}
+          disabled={photoLoading}
+        />
+
+        {/* ====================================
+            ACTION BUTTONS
+        ===================================== */}
+
+        <div className="profile-media-actions">
 
           <button
             type="button"
             className="dashboard-primary-button"
             onClick={handleUpload}
             disabled={
-              uploading ||
-              !selectedFile
+              photoLoading || !photo
             }
           >
-            {uploading
+            {photoLoading
               ? "Uploading..."
-              : "Upload"}
+              : isEmployer
+              ? "Upload Company Logo"
+              : "Upload Profile Photo"}
           </button>
 
-          {profileImage && (
+          {existingImage && (
             <button
               type="button"
-              className="dashboard-secondary-button"
-              onClick={
-                handleDeleteImage
-              }
-              disabled={deleting}
+              className="dashboard-danger-button"
+              onClick={handleDeletePhoto}
+              disabled={photoLoading}
             >
-              {deleting
-                ? "Removing..."
-                : "Remove"}
+              {isEmployer
+                ? "Remove Company Logo"
+                : "Remove Profile Photo"}
             </button>
           )}
 
         </div>
 
       </div>
-
-      {/* ====================================
-          PROFILE FORM
-      ===================================== */}
-
-      <form
-        className="dashboard-card"
-        onSubmit={handleSubmit}
-      >
-
-        {!isEmployer && (
-          <>
-            {/* NAME */}
-
-            <div className="form-group">
-
-              <label htmlFor="name">
-                Full Name
-              </label>
-
-              <input
-                id="name"
-                name="name"
-                type="text"
-                value={
-                  currentFormData.name
-                }
-                onChange={handleChange}
-                placeholder="Enter your full name"
-              />
-
-            </div>
-
-            {/* EMAIL */}
-
-            <div className="form-group">
-
-              <label htmlFor="email">
-                Email
-              </label>
-
-              <input
-                id="email"
-                name="email"
-                type="email"
-                value={
-                  currentFormData.email
-                }
-                onChange={handleChange}
-                placeholder="Enter your email"
-              />
-
-            </div>
-
-            {/* PHONE */}
-
-            <div className="form-group">
-
-              <label htmlFor="phone">
-                Phone
-              </label>
-
-              <input
-                id="phone"
-                name="phone"
-                type="text"
-                value={
-                  currentFormData.phone
-                }
-                onChange={handleChange}
-                placeholder="Enter your phone number"
-              />
-
-            </div>
-
-            {/* LOCATION */}
-
-            <div className="form-group">
-
-              <label htmlFor="location">
-                Location
-              </label>
-
-              <input
-                id="location"
-                name="location"
-                type="text"
-                value={
-                  currentFormData.location
-                }
-                onChange={handleChange}
-                placeholder="City, State"
-              />
-
-            </div>
-
-            {/* SKILLS */}
-
-            <div className="form-group">
-
-              <label htmlFor="skills">
-                Skills
-              </label>
-
-              <input
-                id="skills"
-                name="skills"
-                type="text"
-                value={
-                  currentFormData.skills
-                }
-                onChange={handleChange}
-                placeholder="React, Node.js, MongoDB"
-              />
-
-              <small>
-                Separate skills with commas.
-              </small>
-
-            </div>
-
-            {/* EDUCATION */}
-
-            <div className="form-group">
-
-              <label htmlFor="education">
-                Education
-              </label>
-
-              <textarea
-                id="education"
-                name="education"
-                value={
-                  currentFormData.education
-                }
-                onChange={handleChange}
-                placeholder="Enter your education details"
-                rows="4"
-              />
-
-            </div>
-
-            {/* EXPERIENCE */}
-
-            <div className="form-group">
-
-              <label htmlFor="experience">
-                Experience
-              </label>
-
-              <textarea
-                id="experience"
-                name="experience"
-                value={
-                  currentFormData.experience
-                }
-                onChange={handleChange}
-                placeholder="Enter your experience"
-                rows="4"
-              />
-
-            </div>
-
-            {/* LINKEDIN */}
-
-            <div className="form-group">
-
-              <label htmlFor="linkedin">
-                LinkedIn
-              </label>
-
-              <input
-                id="linkedin"
-                name="linkedin"
-                type="url"
-                value={
-                  currentFormData.linkedin
-                }
-                onChange={handleChange}
-                placeholder="https://linkedin.com/in/..."
-              />
-
-            </div>
-
-            {/* GITHUB */}
-
-            <div className="form-group">
-
-              <label htmlFor="github">
-                GitHub
-              </label>
-
-              <input
-                id="github"
-                name="github"
-                type="url"
-                value={
-                  currentFormData.github
-                }
-                onChange={handleChange}
-                placeholder="https://github.com/..."
-              />
-
-            </div>
-
-            {/* PORTFOLIO */}
-
-            <div className="form-group">
-
-              <label htmlFor="portfolio">
-                Portfolio
-              </label>
-
-              <input
-                id="portfolio"
-                name="portfolio"
-                type="url"
-                value={
-                  currentFormData.portfolio
-                }
-                onChange={handleChange}
-                placeholder="https://yourportfolio.com"
-              />
-
-            </div>
-          </>
-        )}
-
-        {isEmployer && (
-          <>
-            {/* COMPANY NAME */}
-
-            <div className="form-group">
-
-              <label htmlFor="companyName">
-                Company Name
-              </label>
-
-              <input
-                id="companyName"
-                name="companyName"
-                type="text"
-                value={
-                  currentFormData.companyName
-                }
-                onChange={handleChange}
-                placeholder="Enter company name"
-              />
-
-            </div>
-
-            {/* EMAIL */}
-
-            <div className="form-group">
-
-              <label htmlFor="email">
-                Email
-              </label>
-
-              <input
-                id="email"
-                name="email"
-                type="email"
-                value={
-                  currentFormData.email
-                }
-                onChange={handleChange}
-                placeholder="Enter company email"
-              />
-
-            </div>
-
-            {/* PHONE */}
-
-            <div className="form-group">
-
-              <label htmlFor="phone">
-                Phone
-              </label>
-
-              <input
-                id="phone"
-                name="phone"
-                type="text"
-                value={
-                  currentFormData.phone
-                }
-                onChange={handleChange}
-                placeholder="Enter phone number"
-              />
-
-            </div>
-
-            {/* COMPANY WEBSITE */}
-
-            <div className="form-group">
-
-              <label htmlFor="companyWebsite">
-                Company Website
-              </label>
-
-              <input
-                id="companyWebsite"
-                name="companyWebsite"
-                type="url"
-                value={
-                  currentFormData.companyWebsite
-                }
-                onChange={handleChange}
-                placeholder="https://company.com"
-              />
-
-            </div>
-
-            {/* INDUSTRY */}
-
-            <div className="form-group">
-
-              <label htmlFor="industry">
-                Industry
-              </label>
-
-              <input
-                id="industry"
-                name="industry"
-                type="text"
-                value={
-                  currentFormData.industry
-                }
-                onChange={handleChange}
-                placeholder="Technology, Finance, Healthcare..."
-              />
-
-            </div>
-
-            {/* COMPANY LOCATION */}
-
-            <div className="form-group">
-
-              <label htmlFor="companyLocation">
-                Company Location
-              </label>
-
-              <input
-                id="companyLocation"
-                name="companyLocation"
-                type="text"
-                value={
-                  currentFormData.companyLocation
-                }
-                onChange={handleChange}
-                placeholder="City, State"
-              />
-
-            </div>
-
-            {/* COMPANY DESCRIPTION */}
-
-            <div className="form-group">
-
-              <label htmlFor="companyDescription">
-                Company Description
-              </label>
-
-              <textarea
-                id="companyDescription"
-                name="companyDescription"
-                value={
-                  currentFormData.companyDescription
-                }
-                onChange={handleChange}
-                placeholder="Describe your company"
-                rows="5"
-              />
-
-            </div>
-
-            {/* COMPANY LINKEDIN */}
-
-            <div className="form-group">
-
-              <label htmlFor="companyLinkedin">
-                Company LinkedIn
-              </label>
-
-              <input
-                id="companyLinkedin"
-                name="companyLinkedin"
-                type="url"
-                value={
-                  currentFormData.companyLinkedin
-                }
-                onChange={handleChange}
-                placeholder="https://linkedin.com/company/..."
-              />
-
-            </div>
-          </>
-        )}
-
-        {/* ==================================
-            SAVE BUTTON
-        =================================== */}
-
-        <div className="dashboard-actions">
-
-          <button
-            type="submit"
-            className="dashboard-primary-button"
-            disabled={loading}
-          >
-            {loading
-              ? "Saving..."
-              : "Save Profile"}
-          </button>
-
-        </div>
-
-      </form>
 
     </section>
   );
