@@ -7,6 +7,9 @@ import { useNavigate } from "react-router-dom";
 
 import API from "../services/api";
 
+const MEDIA_BASE_URL =
+  "https://job-board-backend-hd1e.onrender.com";
+
 function EmployerDashboard() {
   const navigate = useNavigate();
 
@@ -28,33 +31,47 @@ function EmployerDashboard() {
   const [statsError, setStatsError] = useState("");
 
   const [selectedJob, setSelectedJob] = useState(null);
-  const [applicantLoading, setApplicantLoading] = useState("");
+  const [applicantLoading, setApplicantLoading] =
+    useState("");
 
-  const user = JSON.parse(
-    localStorage.getItem("user") || "null"
-  );
+  let user = null;
+
+  try {
+    user = JSON.parse(
+      localStorage.getItem("user") || "null"
+    );
+  } catch (error) {
+    console.error(
+      "Unable to parse stored user:",
+      error
+    );
+  }
 
   // ==========================================
   // FETCH JOB STATS
   // ==========================================
 
-  const fetchJobStats = useCallback(async (jobId) => {
-    try {
-      const response = await API.get(
-        `/jobs/${jobId}/stats`
-      );
+  const fetchJobStats = useCallback(
+    async (jobId) => {
+      try {
+        const response = await API.get(
+          `/jobs/${jobId}/stats`
+        );
 
-      setJobStats((previous) => ({
-        ...previous,
-        [jobId]: response.data.stats || {},
-      }));
-    } catch (err) {
-      console.error(
-        "Error fetching job stats:",
-        err
-      );
-    }
-  }, []);
+        setJobStats((previous) => ({
+          ...previous,
+          [jobId]:
+            response.data.stats || {},
+        }));
+      } catch (err) {
+        console.error(
+          "Error fetching job stats:",
+          err
+        );
+      }
+    },
+    []
+  );
 
   // ==========================================
   // FETCH EMPLOYER JOBS
@@ -68,7 +85,8 @@ function EmployerDashboard() {
         "/jobs/my-jobs"
       );
 
-      const jobList = response.data.jobs || [];
+      const jobList =
+        response.data.jobs || [];
 
       setJobs(jobList);
 
@@ -96,36 +114,80 @@ function EmployerDashboard() {
   // FETCH EMPLOYER STATS
   // ==========================================
 
-  const fetchEmployerStats = useCallback(async () => {
+  const fetchEmployerStats =
+    useCallback(async () => {
+      try {
+        setStatsError("");
+
+        const response = await API.get(
+          "/employer/stats"
+        );
+
+        setEmployerStats(
+          response.data.stats || {
+            totalJobs: 0,
+            openJobs: 0,
+            closedJobs: 0,
+            totalApplications: 0,
+          }
+        );
+      } catch (err) {
+        console.error(
+          "Error fetching employer stats:",
+          err
+        );
+
+        setStatsError(
+          err.response?.data?.message ||
+            "Unable to load employer statistics."
+        );
+      } finally {
+        setStatsLoading(false);
+      }
+    }, []);
+
+  // ==========================================
+  // UPDATE JOB STATUS
+  // ==========================================
+
+  const updateJobStatus = async (
+    jobId,
+    status
+  ) => {
     try {
-      setStatsError("");
+      setError("");
 
-      const response = await API.get(
-        "/employer/stats"
-      );
-
-      setEmployerStats(
-        response.data.stats || {
-          totalJobs: 0,
-          openJobs: 0,
-          closedJobs: 0,
-          totalApplications: 0,
+      await API.patch(
+        `/jobs/${jobId}/status`,
+        {
+          status,
         }
       );
+
+      setJobs((previousJobs) =>
+        previousJobs.map((job) =>
+          job._id === jobId
+            ? {
+                ...job,
+                status,
+              }
+            : job
+        )
+      );
+
+      await fetchEmployerStats();
     } catch (err) {
       console.error(
-        "Error fetching employer stats:",
+        "Job status update error:",
         err
       );
 
-      setStatsError(
+      setError(
         err.response?.data?.message ||
-          "Unable to load employer statistics."
+          "Unable to update job status."
       );
-    } finally {
-      setStatsLoading(false);
     }
-  }, []);
+  };
 
   // ==========================================
   // FETCH APPLICANTS
@@ -221,7 +283,9 @@ function EmployerDashboard() {
         [response.data],
         {
           type:
-            response.headers["content-type"] ||
+            response.headers[
+              "content-type"
+            ] ||
             "application/octet-stream",
         }
       );
@@ -233,7 +297,9 @@ function EmployerDashboard() {
         document.createElement("a");
 
       link.href = url;
-      link.download = fileName || "resume";
+
+      link.download =
+        fileName || "resume";
 
       document.body.appendChild(link);
 
@@ -316,8 +382,8 @@ function EmployerDashboard() {
             </h1>
 
             <p>
-              Please wait while we load your
-              employer dashboard.
+              Please wait while we load
+              your employer dashboard.
             </p>
 
           </div>
@@ -368,7 +434,9 @@ function EmployerDashboard() {
               type="button"
               className="dashboard-secondary-button"
               onClick={() =>
-                navigate("/employer-profile")
+                navigate(
+                  "/employer-profile"
+                )
               }
             >
               Company Profile
@@ -435,8 +503,8 @@ function EmployerDashboard() {
               </h2>
 
               <p>
-                Monitor your jobs and candidate
-                activity.
+                Monitor your jobs and
+                candidate activity.
               </p>
 
             </div>
@@ -596,8 +664,9 @@ function EmployerDashboard() {
                 </h3>
 
                 <p>
-                  Create your first job listing
-                  and start receiving applications.
+                  Create your first job
+                  listing and start
+                  receiving applications.
                 </p>
 
                 <button
@@ -623,25 +692,60 @@ function EmployerDashboard() {
                 const stats =
                   jobStats[job._id] || {};
 
+                const companyLogo =
+                  job.employer?.companyLogo;
+
                 return (
                   <article
                     className="employer-job-card"
                     key={job._id}
                   >
 
-                    {/* JOB HEADER */}
+                    {/* ==================================
+                        JOB HEADER
+                    =================================== */}
 
                     <div className="employer-job-header">
 
-                      <div>
+                      <div className="job-title-with-logo">
 
-                        <span className="application-label">
-                          Job Listing
-                        </span>
+                        <div className="job-company-logo-wrapper">
 
-                        <h3>
-                          {job.title}
-                        </h3>
+                          {companyLogo ? (
+                            <img
+                              src={`${MEDIA_BASE_URL}/api/media/${companyLogo}`}
+                              alt={
+                                job.employer
+                                  ?.companyName ||
+                                job.company ||
+                                "Company"
+                              }
+                              className="job-company-logo"
+                            />
+                          ) : (
+                            <div className="job-company-logo-placeholder">
+                              {(
+                                job.company ||
+                                "C"
+                              )
+                                .charAt(0)
+                                .toUpperCase()}
+                            </div>
+                          )}
+
+                        </div>
+
+                        <div>
+
+                          <span className="application-label">
+                            Job Listing
+                          </span>
+
+                          <h3>
+                            {job.title}
+                          </h3>
+
+                        </div>
 
                       </div>
 
@@ -653,17 +757,21 @@ function EmployerDashboard() {
 
                         <span
                           className={`status-badge status-${(
-                            job.status || "Open"
+                            job.status ||
+                            "Open"
                           ).toLowerCase()}`}
                         >
-                          {job.status || "Open"}
+                          {job.status ||
+                            "Open"}
                         </span>
 
                       </div>
 
                     </div>
 
-                    {/* JOB DETAILS */}
+                    {/* ==================================
+                        JOB DETAILS
+                    =================================== */}
 
                     <div className="application-details">
 
@@ -733,7 +841,9 @@ function EmployerDashboard() {
 
                     </div>
 
-                    {/* JOB STATS */}
+                    {/* ==================================
+                        JOB STATS
+                    =================================== */}
 
                     <div className="job-mini-stats">
 
@@ -758,7 +868,8 @@ function EmployerDashboard() {
                         </span>
 
                         <strong>
-                          {stats.underReview ?? 0}
+                          {stats.underReview ??
+                            0}
                         </strong>
 
                       </div>
@@ -770,14 +881,17 @@ function EmployerDashboard() {
                         </span>
 
                         <strong>
-                          {stats.shortlisted ?? 0}
+                          {stats.shortlisted ??
+                            0}
                         </strong>
 
                       </div>
 
                     </div>
 
-                    {/* ACTIONS */}
+                    {/* ==================================
+                        ACTIONS
+                    =================================== */}
 
                     <div className="employer-job-actions">
 
@@ -812,12 +926,48 @@ function EmployerDashboard() {
                         View Job
                       </button>
 
+                      {/* CLOSE / REOPEN */}
+
+                      {job.status ===
+                      "Closed" ? (
+                        <button
+                          type="button"
+                          className="job-reopen-button"
+                          onClick={() =>
+                            updateJobStatus(
+                              job._id,
+                              "Open"
+                            )
+                          }
+                        >
+                          Reopen Job
+                        </button>
+                      ) : (
+                        <button
+                          type="button"
+                          className="job-close-button"
+                          onClick={() =>
+                            updateJobStatus(
+                              job._id,
+                              "Closed"
+                            )
+                          }
+                        >
+                          Close Job
+                        </button>
+                      )}
+
                     </div>
 
-                    {/* APPLICANTS */}
+                    {/* ==================================
+                        APPLICANTS
+                    =================================== */}
 
-                    {selectedJob === job._id &&
-                      applicants[job._id] && (
+                    {selectedJob ===
+                      job._id &&
+                      applicants[
+                        job._id
+                      ] && (
                         <div className="applicants-panel">
 
                           <div className="section-heading">
@@ -862,155 +1012,161 @@ function EmployerDashboard() {
 
                           {/* NO APPLICANTS */}
 
-                          {applicants[job._id]
-                            .length === 0 ? (
+                          {applicants[
+                            job._id
+                          ].length === 0 ? (
                             <div className="applicants-empty">
                               No applicants yet.
                             </div>
                           ) : (
                             applicants[
                               job._id
-                            ].map((application) => (
+                            ].map(
+                              (application) => (
 
-                              <div
-                                className="applicant-card"
-                                key={
-                                  application._id
-                                }
-                              >
+                                <div
+                                  className="applicant-card"
+                                  key={
+                                    application._id
+                                  }
+                                >
 
-                                {/* CANDIDATE */}
+                                  {/* CANDIDATE */}
 
-                                <div>
+                                  <div>
 
-                                  <h4>
-                                    {application
-                                      .candidate
-                                      ?.name ||
-                                      "Candidate"}
-                                  </h4>
+                                    <h4>
+                                      {application
+                                        .candidate
+                                        ?.name ||
+                                        "Candidate"}
+                                    </h4>
 
-                                  <p>
-                                    {application
-                                      .candidate
-                                      ?.email ||
-                                      "Email unavailable"}
-                                  </p>
-
-                                  {application
-                                    .candidate
-                                    ?.phone && (
                                     <p>
-                                      {
-                                        application
-                                          .candidate
-                                          .phone
-                                      }
+                                      {application
+                                        .candidate
+                                        ?.email ||
+                                        "Email unavailable"}
                                     </p>
+
+                                    {application
+                                      .candidate
+                                      ?.phone && (
+                                      <p>
+                                        {
+                                          application
+                                            .candidate
+                                            .phone
+                                        }
+                                      </p>
+                                    )}
+
+                                  </div>
+
+                                  {/* STATUS */}
+
+                                  <div className="applicant-controls">
+
+                                    <span
+                                      className={`status-badge status-${(
+                                        application.status ||
+                                        "Applied"
+                                      )
+                                        .toLowerCase()
+                                        .replace(
+                                          /\s+/g,
+                                          "-"
+                                        )}`}
+                                    >
+                                      {application.status ||
+                                        "Applied"}
+                                    </span>
+
+                                    <select
+                                      value={
+                                        application.status ||
+                                        "Applied"
+                                      }
+                                      onChange={(
+                                        event
+                                      ) =>
+                                        updateStatus(
+                                          application._id,
+                                          event.target
+                                            .value,
+                                          job._id
+                                        )
+                                      }
+                                    >
+
+                                      <option value="Applied">
+                                        Applied
+                                      </option>
+
+                                      <option value="Under Review">
+                                        Under Review
+                                      </option>
+
+                                      <option value="Shortlisted">
+                                        Shortlisted
+                                      </option>
+
+                                      <option value="Rejected">
+                                        Rejected
+                                      </option>
+
+                                    </select>
+
+                                  </div>
+
+                                  {/* RESUME */}
+
+                                  {application.resume && (
+                                    <div className="applicant-resume">
+
+                                      <div className="resume-file">
+
+                                        <span className="resume-icon">
+                                          📄
+                                        </span>
+
+                                        <div>
+
+                                          <span className="detail-label">
+                                            Resume
+                                          </span>
+
+                                          <span className="detail-value">
+                                            {application
+                                              .resumeFileName ||
+                                              "Resume"}
+                                          </span>
+
+                                        </div>
+
+                                      </div>
+
+                                      <button
+                                        type="button"
+                                        className="resume-download-button"
+                                        onClick={() =>
+                                          downloadResume(
+                                            application._id,
+                                            application.resumeFileName ||
+                                              "resume"
+                                          )
+                                        }
+                                      >
+                                        ↓ Download Resume
+                                      </button>
+
+                                    </div>
                                   )}
 
                                 </div>
 
-                                {/* STATUS */}
-
-                                <div className="applicant-controls">
-
-                                  <span
-                                    className={`status-badge status-${(
-                                      application.status ||
-                                      "Applied"
-                                    )
-                                      .toLowerCase()
-                                      .replace(
-                                        /\s+/g,
-                                        "-"
-                                      )}`}
-                                  >
-                                    {application.status ||
-                                      "Applied"}
-                                  </span>
-
-                                  <select
-                                    value={
-                                      application.status ||
-                                      "Applied"
-                                    }
-                                    onChange={(event) =>
-                                      updateStatus(
-                                        application._id,
-                                        event.target.value,
-                                        job._id
-                                      )
-                                    }
-                                  >
-
-                                    <option value="Applied">
-                                      Applied
-                                    </option>
-
-                                    <option value="Under Review">
-                                      Under Review
-                                    </option>
-
-                                    <option value="Shortlisted">
-                                      Shortlisted
-                                    </option>
-
-                                    <option value="Rejected">
-                                      Rejected
-                                    </option>
-
-                                  </select>
-
-                                </div>
-
-                                {/* RESUME */}
-
-                                {application.resume && (
-                                  <div className="applicant-resume">
-
-                                    <div className="resume-file">
-
-                                      <span className="resume-icon">
-                                        📄
-                                      </span>
-
-                                      <div>
-
-                                        <span className="detail-label">
-                                          Resume
-                                        </span>
-
-                                        <span className="detail-value">
-                                          {application
-                                            .resumeFileName ||
-                                            "Resume"}
-                                        </span>
-
-                                      </div>
-
-                                    </div>
-
-                                    <button
-                                      type="button"
-                                      className="resume-download-button"
-                                      onClick={() =>
-                                        downloadResume(
-                                          application._id,
-                                          application.resumeFileName ||
-                                            "resume"
-                                        )
-                                      }
-                                    >
-                                      ↓ Download Resume
-                                    </button>
-
-                                  </div>
-                                )}
-
-                              </div>
-
-                            ))
+                              )
+                            )
                           )}
 
                         </div>
