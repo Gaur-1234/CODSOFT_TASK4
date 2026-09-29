@@ -1,15 +1,18 @@
 const express = require("express");
 
-
 const {
   getEmployerProfile,
   updateEmployerProfile,
   uploadCompanyLogo,
+  deleteCompanyLogo,
   getEmployerStats,
 } = require("../controllers/employerController");
 
 const protect = require("../middleware/authMiddleware");
-const uploadCompanyLogoMiddleware = require("../middleware/companyLogoMiddleware");
+
+const uploadCompanyLogoMiddleware =
+  require("../middleware/companyLogoMiddleware");
+
 const router = express.Router();
 
 router.get(
@@ -30,9 +33,17 @@ router.post(
   uploadCompanyLogoMiddleware.single("logo"),
   uploadCompanyLogo
 );
+
+router.delete(
+  "/logo",
+  protect,
+  deleteCompanyLogo
+);
+
 router.get(
   "/stats",
   protect,
   getEmployerStats
 );
+
 module.exports = router;

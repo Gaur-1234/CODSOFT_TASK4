@@ -1,6 +1,7 @@
 const mongoose = require("mongoose");
 const Job = require("../models/Job");
 const User = require("../models/User");
+const Application = require("../models/Application");
 
 const createJob = async (req, res) => {
   try {
@@ -48,7 +49,7 @@ const createJob = async (req, res) => {
       job,
     });
   } catch (error) {
-    console.error(error);
+    console.error("Create job error:", error);
 
     res.status(500).json({
       message: "Server error",
@@ -62,7 +63,6 @@ const getJobs = async (req, res) => {
 
     let filter = {};
 
-    // Search filter
     if (search) {
       filter.$or = [
         { title: { $regex: search, $options: "i" } },
@@ -73,7 +73,6 @@ const getJobs = async (req, res) => {
       ];
     }
 
-    // Location filter
     if (location) {
       filter.location = {
         $regex: location,
@@ -81,7 +80,6 @@ const getJobs = async (req, res) => {
       };
     }
 
-    // Job Type filter
     if (jobType) {
       filter.jobType = {
         $regex: jobType,
@@ -90,7 +88,10 @@ const getJobs = async (req, res) => {
     }
 
     const jobs = await Job.find(filter)
-      .populate("employer", "name email")
+      .populate(
+        "employer",
+        "name email companyName companyLogo companyWebsite"
+      )
       .sort({ createdAt: -1 });
 
     res.status(200).json({
@@ -98,26 +99,28 @@ const getJobs = async (req, res) => {
       jobs,
     });
   } catch (error) {
-    console.error(error);
+    console.error("Get jobs error:", error);
 
     res.status(500).json({
       message: "Server error",
     });
   }
 };
+
 const getJobById = async (req, res) => {
   try {
     const { id } = req.params;
 
-    // Check if ID is valid
     if (!mongoose.Types.ObjectId.isValid(id)) {
       return res.status(400).json({
         message: "Invalid job ID",
       });
     }
 
-    const job = await Job.findById(id)
-      .populate("employer", "name email");
+    const job = await Job.findById(id).populate(
+      "employer",
+      "name email companyName companyLogo companyWebsite"
+    );
 
     if (!job) {
       return res.status(404).json({
@@ -129,13 +132,14 @@ const getJobById = async (req, res) => {
       job,
     });
   } catch (error) {
-    console.error(error);
+    console.error("Get job by ID error:", error);
 
     res.status(500).json({
       message: "Server error",
     });
   }
 };
+
 const getMyJobs = async (req, res) => {
   try {
     if (req.user.role !== "Employer") {
@@ -146,14 +150,19 @@ const getMyJobs = async (req, res) => {
 
     const jobs = await Job.find({
       employer: req.user.userId,
-    }).sort({ createdAt: -1 });
+    })
+      .populate(
+        "employer",
+        "name email companyName companyLogo companyWebsite"
+      )
+      .sort({ createdAt: -1 });
 
     res.status(200).json({
       count: jobs.length,
       jobs,
     });
   } catch (error) {
-    console.error(error);
+    console.error("Get my jobs error:", error);
 
     res.status(500).json({
       message: "Server error",
@@ -201,14 +210,22 @@ const updateJob = async (req, res) => {
     if (title !== undefined) job.title = title;
     if (company !== undefined) job.company = company;
     if (location !== undefined) job.location = location;
+
     if (description !== undefined) {
       job.description = description;
     }
+
     if (requirements !== undefined) {
       job.requirements = requirements;
     }
-    if (salary !== undefined) job.salary = salary;
-    if (jobType !== undefined) job.jobType = jobType;
+
+    if (salary !== undefined) {
+      job.salary = salary;
+    }
+
+    if (jobType !== undefined) {
+      job.jobType = jobType;
+    }
 
     await job.save();
 
@@ -345,39 +362,47 @@ const getJobStats = async (req, res) => {
       });
     }
 
-    const totalApplicants = await Application.countDocuments({
-      job: id,
-    });
+    const totalApplicants =
+      await Application.countDocuments({
+        job: id,
+      });
 
-    const applied = await Application.countDocuments({
-      job: id,
-      status: "Applied",
-    });
+    const applied =
+      await Application.countDocuments({
+        job: id,
+        status: "Applied",
+      });
 
-    const underReview = await Application.countDocuments({
-      job: id,
-      status: "Under Review",
-    });
+    const underReview =
+      await Application.countDocuments({
+        job: id,
+        status: "Under Review",
+      });
 
-    const shortlisted = await Application.countDocuments({
-      job: id,
-      status: "Shortlisted",
-    });
+    const shortlisted =
+      await Application.countDocuments({
+        job: id,
+        status: "Shortlisted",
+      });
 
-    const rejected = await Application.countDocuments({
-      job: id,
-      status: "Rejected",
-    });
+    const rejected =
+      await Application.countDocuments({
+        job: id,
+        status: "Rejected",
+      });
 
-    const withdrawn = await Application.countDocuments({
-      job: id,
-      status: "Withdrawn",
-    });
+    const withdrawn =
+      await Application.countDocuments({
+        job: id,
+        status: "Withdrawn",
+      });
 
     res.status(200).json({
       message: "Job statistics fetched successfully",
+
       stats: {
         totalApplicants,
+        totalApplications: totalApplicants,
         applied,
         underReview,
         shortlisted,
@@ -407,7 +432,8 @@ const getSavedJobs = async (req, res) => {
         path: "savedJobs",
         populate: {
           path: "employer",
-          select: "name email",
+          select:
+            "name email companyName companyLogo companyWebsite",
         },
       })
       .select("savedJobs");
@@ -464,7 +490,11 @@ const saveJob = async (req, res) => {
       });
     }
 
-    if (user.savedJobs.some((jobId) => jobId.toString() === id)) {
+    if (
+      user.savedJobs.some(
+        (jobId) => jobId.toString() === id
+      )
+    ) {
       return res.status(400).json({
         message: "Job is already saved",
       });
@@ -526,11 +556,15 @@ const removeSavedJob = async (req, res) => {
     await user.save();
 
     res.status(200).json({
-      message: "Job removed from saved jobs successfully",
+      message:
+        "Job removed from saved jobs successfully",
       removedJob: id,
     });
   } catch (error) {
-    console.error("Remove saved job error:", error);
+    console.error(
+      "Remove saved job error:",
+      error
+    );
 
     res.status(500).json({
       message: "Server error",

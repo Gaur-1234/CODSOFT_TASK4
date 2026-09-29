@@ -27,7 +27,9 @@ function EmployerProfile() {
           "/employer/profile"
         );
 
-        if (cancelled) return;
+        if (cancelled) {
+          return;
+        }
 
         setProfile(
           response.data.user ||
@@ -35,7 +37,9 @@ function EmployerProfile() {
             {}
         );
       } catch (err) {
-        if (cancelled) return;
+        if (cancelled) {
+          return;
+        }
 
         console.error(
           "Employer profile error:",
@@ -61,28 +65,48 @@ function EmployerProfile() {
   }, []);
 
   // ==========================================
-  // HANDLE PROFILE SAVE
+  // HANDLE PROFILE SAVE / LOGO UPDATE
   // ==========================================
 
   const handleSaved = (updatedProfile) => {
     setProfile(updatedProfile);
 
-    const storedUser = JSON.parse(
-      localStorage.getItem("user") || "null"
-    );
+    try {
+      const storedUser = JSON.parse(
+        localStorage.getItem("user") ||
+          "null"
+      );
 
-    if (storedUser) {
-      localStorage.setItem(
-        "user",
-        JSON.stringify({
-          ...storedUser,
-          name:
-            updatedProfile?.name ||
-            storedUser.name,
-          email:
-            updatedProfile?.email ||
-            storedUser.email,
-        })
+      if (storedUser) {
+        localStorage.setItem(
+          "user",
+          JSON.stringify({
+            ...storedUser,
+
+            name:
+              updatedProfile?.name ||
+              storedUser.name,
+
+            email:
+              updatedProfile?.email ||
+              storedUser.email,
+
+            companyLogo:
+              updatedProfile?.companyLogo ||
+              storedUser.companyLogo ||
+              "",
+          })
+        );
+
+        // Tell Navbar that profile data changed
+        window.dispatchEvent(
+          new Event("profileUpdated")
+        );
+      }
+    } catch (error) {
+      console.error(
+        "Unable to update stored employer:",
+        error
       );
     }
   };
@@ -94,11 +118,8 @@ function EmployerProfile() {
   if (loading) {
     return (
       <main className="dashboard-page">
-
         <div className="dashboard-container">
-
           <div className="dashboard-header">
-
             <span className="dashboard-eyebrow">
               Employer Portal
             </span>
@@ -111,11 +132,8 @@ function EmployerProfile() {
               Please wait while we load your
               company information.
             </p>
-
           </div>
-
         </div>
-
       </main>
     );
   }
@@ -127,11 +145,8 @@ function EmployerProfile() {
   if (error) {
     return (
       <main className="dashboard-page">
-
         <div className="dashboard-container">
-
           <div className="dashboard-header">
-
             <span className="dashboard-eyebrow">
               Employer Portal
             </span>
@@ -140,12 +155,9 @@ function EmployerProfile() {
               Unable to Load Profile
             </h1>
 
-            <p>
-              {error}
-            </p>
+            <p>{error}</p>
 
             <div className="dashboard-actions">
-
               <button
                 type="button"
                 className="dashboard-secondary-button"
@@ -167,20 +179,15 @@ function EmployerProfile() {
               >
                 Try Again
               </button>
-
             </div>
-
           </div>
-
         </div>
-
       </main>
     );
   }
 
   return (
     <main className="dashboard-page">
-
       <div className="dashboard-container">
 
         {/* ====================================
@@ -188,9 +195,7 @@ function EmployerProfile() {
         ===================================== */}
 
         <section className="dashboard-header">
-
           <div>
-
             <span className="dashboard-eyebrow">
               Employer Portal
             </span>
@@ -203,11 +208,9 @@ function EmployerProfile() {
               Manage your company and employer
               information.
             </p>
-
           </div>
 
           <div className="dashboard-actions">
-
             <button
               type="button"
               className="dashboard-secondary-button"
@@ -229,9 +232,7 @@ function EmployerProfile() {
             >
               + Post a Job
             </button>
-
           </div>
-
         </section>
 
         {/* ====================================
@@ -257,7 +258,6 @@ function EmployerProfile() {
         <ApplicantSearch />
 
       </div>
-
     </main>
   );
 }
