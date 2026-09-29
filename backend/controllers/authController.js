@@ -7,18 +7,27 @@ const { Resend } = require("resend");
 const resend = new Resend(
   process.env.RESEND_API_KEY
 );
+
+// ==========================================
+// REGISTER USER
+// ==========================================
+
 const registerUser = async (req, res) => {
   try {
     const { name, email, password, role } = req.body;
 
     if (!name || !email || !password) {
       return res.status(400).json({
-        message: "Name, email and password are required",
+        message:
+          "Name, email and password are required",
       });
     }
 
+    const normalizedEmail =
+      email.trim().toLowerCase();
+
     const existingUser = await User.findOne({
-      email: email.toLowerCase(),
+      email: normalizedEmail,
     });
 
     if (existingUser) {
@@ -27,34 +36,30 @@ const registerUser = async (req, res) => {
       });
     }
 
-    const hashedPassword = await bcrypt.hash(
-      password,
-      10
-    );
+    const hashedPassword =
+      await bcrypt.hash(password, 10);
 
     const user = await User.create({
-      name,
-      email: email.toLowerCase(),
+      name: name.trim(),
+      email: normalizedEmail,
       password: hashedPassword,
       role: role || "Candidate",
     });
 
-    // Generate email verification token
-    const verificationToken = crypto
-      .randomBytes(32)
-      .toString("hex");
+    const verificationToken =
+      crypto.randomBytes(32).toString("hex");
 
-    user.emailVerificationToken = crypto
-      .createHash("sha256")
-      .update(verificationToken)
-      .digest("hex");
+    user.emailVerificationToken =
+      crypto
+        .createHash("sha256")
+        .update(verificationToken)
+        .digest("hex");
 
     user.emailVerificationExpires =
       Date.now() + 24 * 60 * 60 * 1000;
 
     await user.save();
 
-    // Create verification link
     const frontendUrl =
       process.env.FRONTEND_URL ||
       "https://job-board-flax-mu.vercel.app";
@@ -62,49 +67,68 @@ const registerUser = async (req, res) => {
     const verificationLink =
       `${frontendUrl}/verify-email/${verificationToken}`;
 
-    // Send verification email
-    await resend.emails.send({
-      from:
-        process.env.EMAIL_FROM ||
-        "JobBoard <onboarding@resend.dev>",
+    const { error } =
+      await resend.emails.send({
+        from:
+          process.env.EMAIL_FROM ||
+          "JobBoard <onboarding@resend.dev>",
+        to: user.email,
+        subject:
+          "Verify your JobBoard email",
+        html: `
+          <div style="font-family:Arial,sans-serif;max-width:600px;margin:auto;">
+            <h2>Verify Your Email</h2>
 
-      to: user.email,
+            <p>Hello ${user.name},</p>
 
-      subject: "Verify your JobBoard email",
+            <p>
+              Please verify your email address
+              to activate your JobBoard account.
+            </p>
 
-      html: `
-        <div style="font-family: Arial, sans-serif;">
-          <h2>Verify Your Email</h2>
+            <a
+              href="${verificationLink}"
+              style="
+                display:inline-block;
+                padding:12px 20px;
+                background:#2563eb;
+                color:white;
+                text-decoration:none;
+                border-radius:6px;
+              "
+            >
+              Verify Email
+            </a>
 
-          <p>Hello ${user.name},</p>
+            <p style="margin-top:20px;">
+              This verification link will expire
+              in 24 hours.
+            </p>
+          </div>
+        `,
+      });
 
-          <p>
-            Please verify your email address to activate
-            your JobBoard account.
-          </p>
+    if (error) {
+      console.error(
+        "Registration verification email error:",
+        error
+      );
 
-          <a
-            href="${verificationLink}"
-            style="
-              display:inline-block;
-              padding:12px 20px;
-              background:#2563eb;
-              color:white;
-              text-decoration:none;
-              border-radius:6px;
-            "
-          >
-            Verify Email
-          </a>
+      return res.status(201).json({
+        message:
+          "User registered successfully, but the verification email could not be sent. Please use the resend verification option from the login page.",
+        user: {
+          id: user._id,
+          name: user.name,
+          email: user.email,
+          role: user.role,
+          isEmailVerified:
+            user.isEmailVerified,
+        },
+      });
+    }
 
-          <p style="margin-top:20px;">
-            This verification link will expire in 24 hours.
-          </p>
-        </div>
-      `,
-    });
-
-    res.status(201).json({
+    return res.status(201).json({
       message:
         "User registered successfully. Please verify your email.",
       user: {
@@ -112,7 +136,8 @@ const registerUser = async (req, res) => {
         name: user.name,
         email: user.email,
         role: user.role,
-        isEmailVerified: user.isEmailVerified,
+        isEmailVerified:
+          user.isEmailVerified,
       },
     });
   } catch (error) {
@@ -121,12 +146,15 @@ const registerUser = async (req, res) => {
       error
     );
 
-    res.status(500).json({
+    return res.status(500).json({
       message: "Server error",
     });
   }
 };
 
+// ==========================================
+// LOGIN USER
+// ==========================================
 
 const loginUser = async (req, res) => {
   try {
@@ -134,17 +162,19 @@ const loginUser = async (req, res) => {
 
     if (!email || !password) {
       return res.status(400).json({
-        message: "Email and password are required",
+        message:
+          "Email and password are required",
       });
     }
 
     const user = await User.findOne({
-      email: email.toLowerCase(),
+      email: email.trim().toLowerCase(),
     });
 
     if (!user) {
       return res.status(401).json({
-        message: "Invalid email or password",
+        message:
+          "Invalid email or password",
       });
     }
 
@@ -156,11 +186,11 @@ const loginUser = async (req, res) => {
 
     if (!isPasswordCorrect) {
       return res.status(401).json({
-        message: "Invalid email or password",
+        message:
+          "Invalid email or password",
       });
     }
 
-    // Short-lived access token
     const accessToken = jwt.sign(
       {
         userId: user._id,
@@ -172,7 +202,6 @@ const loginUser = async (req, res) => {
       }
     );
 
-    // Long-lived refresh token
     const refreshToken = jwt.sign(
       {
         userId: user._id,
@@ -183,33 +212,43 @@ const loginUser = async (req, res) => {
       }
     );
 
-    // Store refresh token in database
     user.refreshToken = refreshToken;
 
     await user.save();
 
-    res.status(200).json({
+    return res.status(200).json({
       message: "Login successful",
-
       accessToken,
-
       refreshToken,
-
       user: {
         id: user._id,
         name: user.name,
         email: user.email,
         role: user.role,
+        profilePhoto:
+          user.profilePhoto || "",
+        companyLogo:
+          user.companyLogo || "",
+        isEmailVerified:
+          user.isEmailVerified,
       },
     });
   } catch (error) {
-    console.error("Login error:", error);
+    console.error(
+      "Login error:",
+      error
+    );
 
-    res.status(500).json({
+    return res.status(500).json({
       message: "Server error",
     });
   }
 };
+
+// ==========================================
+// FORGOT PASSWORD
+// ==========================================
+
 const forgotPassword = async (req, res) => {
   try {
     const { email } = req.body;
@@ -221,10 +260,9 @@ const forgotPassword = async (req, res) => {
     }
 
     const user = await User.findOne({
-      email: email.toLowerCase(),
+      email: email.trim().toLowerCase(),
     });
 
-    // Do not reveal whether the email exists
     if (!user) {
       return res.status(200).json({
         message:
@@ -232,12 +270,14 @@ const forgotPassword = async (req, res) => {
       });
     }
 
-    const resetToken = crypto.randomBytes(32).toString("hex");
+    const resetToken =
+      crypto.randomBytes(32).toString("hex");
 
-    user.resetPasswordToken = crypto
-      .createHash("sha256")
-      .update(resetToken)
-      .digest("hex");
+    user.resetPasswordToken =
+      crypto
+        .createHash("sha256")
+        .update(resetToken)
+        .digest("hex");
 
     user.resetPasswordExpires =
       Date.now() + 15 * 60 * 1000;
@@ -251,48 +291,54 @@ const forgotPassword = async (req, res) => {
     const resetLink =
       `${frontendUrl}/reset-password/${resetToken}`;
 
-    await resend.emails.send({
-      from:
-        process.env.EMAIL_FROM ||
-        "JobBoard <onboarding@resend.dev>",
-      to: user.email,
-      subject: "JobBoard Password Reset",
-      html: `
-        <div style="font-family: Arial, sans-serif;">
-          <h2>Password Reset Request</h2>
+    const { error } =
+      await resend.emails.send({
+        from:
+          process.env.EMAIL_FROM ||
+          "JobBoard <onboarding@resend.dev>",
+        to: user.email,
+        subject:
+          "JobBoard Password Reset",
+        html: `
+          <div style="font-family:Arial,sans-serif;">
+            <h2>Password Reset Request</h2>
 
-          <p>Hello ${user.name},</p>
+            <p>Hello ${user.name},</p>
 
-          <p>
-            We received a request to reset your JobBoard password.
-          </p>
+            <p>
+              We received a request to reset
+              your JobBoard password.
+            </p>
 
-          <p>
-            This link will expire in 15 minutes.
-          </p>
+            <p>
+              This link will expire in 15 minutes.
+            </p>
 
-          <a
-            href="${resetLink}"
-            style="
-              display:inline-block;
-              padding:12px 20px;
-              background:#2563eb;
-              color:white;
-              text-decoration:none;
-              border-radius:6px;
-            "
-          >
-            Reset Password
-          </a>
+            <a
+              href="${resetLink}"
+              style="
+                display:inline-block;
+                padding:12px 20px;
+                background:#2563eb;
+                color:white;
+                text-decoration:none;
+                border-radius:6px;
+              "
+            >
+              Reset Password
+            </a>
+          </div>
+        `,
+      });
 
-          <p style="margin-top:20px;">
-            If you did not request this, you can safely ignore this email.
-          </p>
-        </div>
-      `,
-    });
+    if (error) {
+      console.error(
+        "Forgot password email error:",
+        error
+      );
+    }
 
-    res.status(200).json({
+    return res.status(200).json({
       message:
         "If an account exists with this email, a password reset link has been sent",
     });
@@ -302,11 +348,15 @@ const forgotPassword = async (req, res) => {
       error
     );
 
-    res.status(500).json({
+    return res.status(500).json({
       message: "Server error",
     });
   }
 };
+
+// ==========================================
+// RESET PASSWORD
+// ==========================================
 
 const resetPassword = async (req, res) => {
   try {
@@ -315,26 +365,30 @@ const resetPassword = async (req, res) => {
 
     if (!token) {
       return res.status(400).json({
-        message: "Reset token is required",
+        message:
+          "Reset token is required",
       });
     }
 
     if (!password) {
       return res.status(400).json({
-        message: "New password is required",
+        message:
+          "New password is required",
       });
     }
 
     if (password.length < 6) {
       return res.status(400).json({
-        message: "Password must be at least 6 characters",
+        message:
+          "Password must be at least 6 characters",
       });
     }
 
-    const hashedToken = crypto
-      .createHash("sha256")
-      .update(token)
-      .digest("hex");
+    const hashedToken =
+      crypto
+        .createHash("sha256")
+        .update(token)
+        .digest("hex");
 
     const user = await User.findOne({
       resetPasswordToken: hashedToken,
@@ -345,23 +399,22 @@ const resetPassword = async (req, res) => {
 
     if (!user) {
       return res.status(400).json({
-        message: "Invalid or expired reset token",
+        message:
+          "Invalid or expired reset token",
       });
     }
 
-    const hashedPassword = await bcrypt.hash(
-      password,
-      10
-    );
+    user.password =
+      await bcrypt.hash(password, 10);
 
-    user.password = hashedPassword;
     user.resetPasswordToken = "";
     user.resetPasswordExpires = null;
 
     await user.save();
 
-    res.status(200).json({
-      message: "Password reset successfully",
+    return res.status(200).json({
+      message:
+        "Password reset successfully",
     });
   } catch (error) {
     console.error(
@@ -369,11 +422,15 @@ const resetPassword = async (req, res) => {
       error
     );
 
-    res.status(500).json({
+    return res.status(500).json({
       message: "Server error",
     });
   }
 };
+
+// ==========================================
+// SEND OTP
+// ==========================================
 
 const sendOTP = async (req, res) => {
   try {
@@ -386,7 +443,7 @@ const sendOTP = async (req, res) => {
     }
 
     const user = await User.findOne({
-      email: email.toLowerCase(),
+      email: email.trim().toLowerCase(),
     });
 
     if (!user) {
@@ -401,42 +458,46 @@ const sendOTP = async (req, res) => {
       .toString();
 
     user.otp = otp;
+
     user.otpExpires =
       Date.now() + 10 * 60 * 1000;
 
     await user.save();
 
-    await resend.emails.send({
-      from:
-        process.env.EMAIL_FROM ||
-        "JobBoard <onboarding@resend.dev>",
-      to: user.email,
-      subject: "Your JobBoard OTP",
-      html: `
-        <div style="font-family: Arial, sans-serif;">
-          <h2>JobBoard OTP Verification</h2>
+    const { error } =
+      await resend.emails.send({
+        from:
+          process.env.EMAIL_FROM ||
+          "JobBoard <onboarding@resend.dev>",
+        to: user.email,
+        subject: "Your JobBoard OTP",
+        html: `
+          <div style="font-family:Arial,sans-serif;">
+            <h2>JobBoard OTP Verification</h2>
 
-          <p>Hello ${user.name},</p>
+            <p>Hello ${user.name},</p>
 
-          <p>Your OTP is:</p>
+            <p>Your OTP is:</p>
 
-          <h1 style="letter-spacing: 8px;">
-            ${otp}
-          </h1>
+            <h1 style="letter-spacing:8px;">
+              ${otp}
+            </h1>
 
-          <p>
-            This OTP will expire in 10 minutes.
-          </p>
+            <p>
+              This OTP will expire in 10 minutes.
+            </p>
+          </div>
+        `,
+      });
 
-          <p>
-            If you did not request this OTP,
-            you can safely ignore this email.
-          </p>
-        </div>
-      `,
-    });
+    if (error) {
+      console.error(
+        "OTP email error:",
+        error
+      );
+    }
 
-    res.status(200).json({
+    return res.status(200).json({
       message: "OTP sent successfully",
     });
   } catch (error) {
@@ -445,12 +506,15 @@ const sendOTP = async (req, res) => {
       error
     );
 
-    res.status(500).json({
+    return res.status(500).json({
       message: "Server error",
     });
   }
 };
 
+// ==========================================
+// VERIFY OTP
+// ==========================================
 
 const verifyOTP = async (req, res) => {
   try {
@@ -458,12 +522,13 @@ const verifyOTP = async (req, res) => {
 
     if (!email || !otp) {
       return res.status(400).json({
-        message: "Email and OTP are required",
+        message:
+          "Email and OTP are required",
       });
     }
 
     const user = await User.findOne({
-      email: email.toLowerCase(),
+      email: email.trim().toLowerCase(),
     });
 
     if (!user) {
@@ -474,7 +539,8 @@ const verifyOTP = async (req, res) => {
 
     if (!user.otp || !user.otpExpires) {
       return res.status(400).json({
-        message: "OTP not found or expired",
+        message:
+          "OTP not found or expired",
       });
     }
 
@@ -500,21 +566,32 @@ const verifyOTP = async (req, res) => {
 
     await user.save();
 
-    res.status(200).json({
-      message: "OTP verified successfully",
+    return res.status(200).json({
+      message:
+        "OTP verified successfully",
     });
   } catch (error) {
-    console.error("Verify OTP error:", error);
+    console.error(
+      "Verify OTP error:",
+      error
+    );
 
-    res.status(500).json({
+    return res.status(500).json({
       message: "Server error",
     });
   }
 };
 
+// ==========================================
+// CHANGE PASSWORD
+// ==========================================
+
 const changePassword = async (req, res) => {
   try {
-    const { currentPassword, newPassword } = req.body;
+    const {
+      currentPassword,
+      newPassword,
+    } = req.body;
 
     if (!currentPassword || !newPassword) {
       return res.status(400).json({
@@ -555,19 +632,19 @@ const changePassword = async (req, res) => {
 
     if (!isPasswordCorrect) {
       return res.status(401).json({
-        message: "Current password is incorrect",
+        message:
+          "Current password is incorrect",
       });
     }
 
-    user.password = await bcrypt.hash(
-      newPassword,
-      10
-    );
+    user.password =
+      await bcrypt.hash(newPassword, 10);
 
     await user.save();
 
-    res.status(200).json({
-      message: "Password changed successfully",
+    return res.status(200).json({
+      message:
+        "Password changed successfully",
     });
   } catch (error) {
     console.error(
@@ -575,19 +652,27 @@ const changePassword = async (req, res) => {
       error
     );
 
-    res.status(500).json({
+    return res.status(500).json({
       message: "Server error",
     });
   }
 };
 
-const refreshAccessToken = async (req, res) => {
+// ==========================================
+// REFRESH ACCESS TOKEN
+// ==========================================
+
+const refreshAccessToken = async (
+  req,
+  res
+) => {
   try {
     const { refreshToken } = req.body;
 
     if (!refreshToken) {
       return res.status(400).json({
-        message: "Refresh token is required",
+        message:
+          "Refresh token is required",
       });
     }
 
@@ -600,7 +685,8 @@ const refreshAccessToken = async (req, res) => {
       );
     } catch (error) {
       return res.status(401).json({
-        message: "Invalid or expired refresh token",
+        message:
+          "Invalid or expired refresh token",
       });
     }
 
@@ -611,7 +697,8 @@ const refreshAccessToken = async (req, res) => {
 
     if (!user) {
       return res.status(401).json({
-        message: "Invalid refresh token",
+        message:
+          "Invalid refresh token",
       });
     }
 
@@ -626,8 +713,9 @@ const refreshAccessToken = async (req, res) => {
       }
     );
 
-    res.status(200).json({
-      message: "Access token refreshed successfully",
+    return res.status(200).json({
+      message:
+        "Access token refreshed successfully",
       accessToken: newAccessToken,
     });
   } catch (error) {
@@ -636,12 +724,15 @@ const refreshAccessToken = async (req, res) => {
       error
     );
 
-    res.status(500).json({
+    return res.status(500).json({
       message: "Server error",
     });
   }
 };
 
+// ==========================================
+// VERIFY EMAIL
+// ==========================================
 
 const verifyEmail = async (req, res) => {
   try {
@@ -649,14 +740,16 @@ const verifyEmail = async (req, res) => {
 
     if (!token) {
       return res.status(400).json({
-        message: "Verification token is required",
+        message:
+          "Verification token is required",
       });
     }
 
-    const hashedToken = crypto
-      .createHash("sha256")
-      .update(token)
-      .digest("hex");
+    const hashedToken =
+      crypto
+        .createHash("sha256")
+        .update(token)
+        .digest("hex");
 
     const user = await User.findOne({
       emailVerificationToken: hashedToken,
@@ -667,7 +760,8 @@ const verifyEmail = async (req, res) => {
 
     if (!user) {
       return res.status(400).json({
-        message: "Invalid or expired verification token",
+        message:
+          "Invalid or expired verification token",
       });
     }
 
@@ -677,8 +771,9 @@ const verifyEmail = async (req, res) => {
 
     await user.save();
 
-    res.status(200).json({
-      message: "Email verified successfully",
+    return res.status(200).json({
+      message:
+        "Email verified successfully",
     });
   } catch (error) {
     console.error(
@@ -686,11 +781,151 @@ const verifyEmail = async (req, res) => {
       error
     );
 
-    res.status(500).json({
+    return res.status(500).json({
       message: "Server error",
     });
   }
 };
+
+// ==========================================
+// RESEND VERIFICATION EMAIL
+// ==========================================
+
+const resendVerificationEmail = async (
+  req,
+  res
+) => {
+  try {
+    const { email } = req.body;
+
+    if (!email) {
+      return res.status(400).json({
+        message: "Email is required",
+      });
+    }
+
+    const normalizedEmail =
+      email.trim().toLowerCase();
+
+    const user = await User.findOne({
+      email: normalizedEmail,
+    });
+
+    if (!user) {
+      return res.status(404).json({
+        message:
+          "No account found with this email.",
+      });
+    }
+
+    if (user.isEmailVerified) {
+      return res.status(400).json({
+        message:
+          "This email is already verified.",
+      });
+    }
+
+    const verificationToken =
+      crypto.randomBytes(32).toString("hex");
+
+    user.emailVerificationToken =
+      crypto
+        .createHash("sha256")
+        .update(verificationToken)
+        .digest("hex");
+
+    user.emailVerificationExpires =
+      Date.now() + 24 * 60 * 60 * 1000;
+
+    await user.save();
+
+    const frontendUrl =
+      process.env.FRONTEND_URL ||
+      "https://job-board-flax-mu.vercel.app";
+
+    const verificationLink =
+      `${frontendUrl}/verify-email/${verificationToken}`;
+
+    const { error } =
+      await resend.emails.send({
+        from:
+          process.env.EMAIL_FROM ||
+          "JobBoard <onboarding@resend.dev>",
+
+        to: user.email,
+
+        subject:
+          "Verify your JobBoard email",
+
+        html: `
+          <div style="font-family:Arial,sans-serif;max-width:600px;margin:auto;">
+            <h2>Verify your JobBoard Email</h2>
+
+            <p>Hello ${user.name || "User"},</p>
+
+            <p>
+              Please click the button below
+              to verify your email address.
+            </p>
+
+            <a
+              href="${verificationLink}"
+              style="
+                display:inline-block;
+                padding:12px 20px;
+                background:#2563eb;
+                color:white;
+                text-decoration:none;
+                border-radius:8px;
+              "
+            >
+              Verify Email
+            </a>
+
+            <p style="margin-top:20px;">
+              This verification link will expire
+              in 24 hours.
+            </p>
+
+            <p>
+              If you did not create this account,
+              you can safely ignore this email.
+            </p>
+          </div>
+        `,
+      });
+
+    if (error) {
+      console.error(
+        "Resend verification email error:",
+        error
+      );
+
+      return res.status(500).json({
+        message:
+          "Unable to send verification email. Please try again later.",
+      });
+    }
+
+    return res.status(200).json({
+      message:
+        "Verification email sent successfully.",
+    });
+  } catch (error) {
+    console.error(
+      "Resend verification error:",
+      error
+    );
+
+    return res.status(500).json({
+      message: "Server error",
+    });
+  }
+};
+
+// ==========================================
+// EXPORTS
+// ==========================================
 
 module.exports = {
   registerUser,
@@ -702,4 +937,5 @@ module.exports = {
   changePassword,
   refreshAccessToken,
   verifyEmail,
+  resendVerificationEmail,
 };

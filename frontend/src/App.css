@@ -2507,3 +2507,393 @@ footer {
   }
 
 }
+
+
+/* =========================================================
+   VERIFICATION EMAIL
+========================================================= */
+
+.verification-resend {
+  margin-top: 22px;
+  padding-top: 20px;
+
+  border-top: 1px solid var(--border);
+
+  text-align: center;
+}
+
+.verification-resend p {
+  margin: 0 0 10px;
+
+  color: var(--muted);
+
+  font-size: 13px;
+}
+
+.resend-verification-button {
+  min-height: 40px;
+
+  padding: 0 15px;
+
+  border: 1px solid
+    rgba(79, 124, 255, 0.30);
+
+  border-radius: 9px;
+
+  background:
+    rgba(79, 124, 255, 0.08);
+
+  color: #9fc0ff;
+
+  font-size: 13px;
+  font-weight: 750;
+
+  cursor: pointer;
+
+  transition:
+    transform 0.2s ease,
+    background 0.2s ease,
+    border-color 0.2s ease;
+}
+
+.resend-verification-button:hover {
+  transform: translateY(-1px);
+
+  background:
+    rgba(79, 124, 255, 0.15);
+
+  border-color:
+    rgba(79, 124, 255, 0.45);
+}
+
+.resend-verification-button:disabled {
+  opacity: 0.55;
+
+  cursor: not-allowed;
+
+  transform: none;
+}
+
+.verification-success {
+  margin-top: 10px !important;
+
+  color: #86efac !important;
+}
+
+
+/* =========================================================
+   PROFILE FILE UPLOAD
+========================================================= */
+
+.profile-file-picker {
+  display: flex;
+
+  align-items: center;
+
+  gap: 12px;
+
+  flex-wrap: wrap;
+
+  margin-bottom: 14px;
+}
+
+.profile-file-input {
+  position: absolute;
+
+  width: 1px;
+  height: 1px;
+
+  padding: 0;
+  margin: -1px;
+
+  overflow: hidden;
+
+  clip: rect(0, 0, 0, 0);
+
+  white-space: nowrap;
+
+  border: 0;
+}
+
+.profile-file-label {
+  display: inline-flex;
+
+  align-items: center;
+  justify-content: center;
+
+  min-height: 42px;
+
+  padding: 0 16px;
+
+  border: 1px solid
+    rgba(91, 112, 145, 0.35);
+
+  border-radius: 10px;
+
+  background:
+    rgba(255, 255, 255, 0.04);
+
+  color: #dbe7f7;
+
+  font-size: 13px;
+  font-weight: 750;
+
+  cursor: pointer;
+
+  transition:
+    transform 0.2s ease,
+    background 0.2s ease,
+    border-color 0.2s ease;
+}
+
+.profile-file-label:hover {
+  transform: translateY(-1px);
+
+  background:
+    rgba(79, 124, 255, 0.09);
+
+  border-color:
+    rgba(79, 124, 255, 0.40);
+}
+
+.selected-file-name {
+  max-width: 300px;
+
+  overflow: hidden;
+
+  text-overflow: ellipsis;
+
+  white-space: nowrap;
+
+  color: #8fa3bf;
+
+  font-size: 12px;
+}
+
+
+/* =========================================================
+   WITHDRAW APPLICATION
+========================================================= */
+
+.application-card-actions {
+  display: flex;
+
+  align-items: center;
+  justify-content: flex-end;
+
+  gap: 10px;
+
+  flex-wrap: wrap;
+}
+
+.withdraw-application-button {
+  min-height: 42px;
+
+  padding: 0 16px;
+
+  border: 1px solid
+    rgba(239, 68, 68, 0.30);
+
+  border-radius: 10px;
+
+  background:
+    rgba(239, 68, 68, 0.08);
+
+  color: #fda4af;
+
+  font-size: 13px;
+  font-weight: 750;
+
+  cursor: pointer;
+
+  transition:
+    transform 0.2s ease,
+    background 0.2s ease,
+    border-color 0.2s ease;
+}
+
+.withdraw-application-button:hover {
+  transform: translateY(-2px);
+
+  background:
+    rgba(239, 68, 68, 0.15);
+
+  border-color:
+    rgba(239, 68, 68, 0.45);
+}
+
+.withdraw-application-button:active {
+  transform: translateY(0);
+}
+
+.withdraw-application-button:disabled {
+  opacity: 0.55;
+
+  cursor: not-allowed;
+
+  transform: none;
+}
+
+
+/* =========================================================
+   PROFILE SUCCESS MESSAGE
+========================================================= */
+
+.dashboard-success {
+  margin-bottom: 20px;
+
+  padding: 14px 16px;
+
+  border: 1px solid
+    rgba(34, 197, 94, 0.25);
+
+  border-radius: 12px;
+
+  background:
+    rgba(34, 197, 94, 0.07);
+
+  color: #bbf7d0;
+}
+
+.dashboard-success p {
+  margin: 0;
+}
+
+
+/* =========================================================
+   MOBILE
+========================================================= */
+
+@media (max-width: 600px) {
+
+  .application-card-actions {
+    width: 100%;
+
+    justify-content: flex-start;
+  }
+
+  .application-card-actions
+    .dashboard-secondary-button,
+  .application-card-actions
+    .withdraw-application-button {
+    width: 100%;
+  }
+
+  .profile-file-picker {
+    align-items: flex-start;
+
+    flex-direction: column;
+  }
+
+  .profile-file-label {
+    width: 100%;
+  }
+
+  .selected-file-name {
+    max-width: 100%;
+  }
+
+}
+
+
+/* =========================================================
+   DELETE JOB
+========================================================= */
+
+.job-delete-button {
+  display: inline-flex;
+
+  align-items: center;
+  justify-content: center;
+
+  min-height: 42px;
+
+  padding: 0 16px;
+
+  border: 1px solid
+    rgba(239, 68, 68, 0.38);
+
+  border-radius: 10px;
+
+  background:
+    linear-gradient(
+      135deg,
+      rgba(239, 68, 68, 0.12),
+      rgba(185, 28, 28, 0.08)
+    );
+
+  color: #fca5a5;
+
+  font-size: 13px;
+  font-weight: 750;
+
+  cursor: pointer;
+
+  transition:
+    transform 0.2s ease,
+    background 0.2s ease,
+    border-color 0.2s ease,
+    box-shadow 0.2s ease;
+}
+
+.job-delete-button:hover {
+  transform: translateY(-2px);
+
+  background:
+    linear-gradient(
+      135deg,
+      rgba(239, 68, 68, 0.20),
+      rgba(185, 28, 28, 0.14)
+    );
+
+  border-color:
+    rgba(239, 68, 68, 0.65);
+
+  box-shadow:
+    0 8px 22px
+      rgba(239, 68, 68, 0.10);
+}
+
+.job-delete-button:active {
+  transform: translateY(0);
+}
+
+.job-delete-button:disabled {
+  opacity: 0.55;
+
+  cursor: not-allowed;
+
+  transform: none;
+
+  box-shadow: none;
+}
+
+
+/* =========================================================
+   EMPLOYER ACTIONS — BETTER WRAPPING
+========================================================= */
+
+.employer-job-actions {
+  display: flex;
+
+  align-items: center;
+
+  gap: 9px;
+
+  flex-wrap: wrap;
+
+  padding-top: 3px;
+}
+
+@media (max-width: 760px) {
+  .employer-job-actions {
+    align-items: stretch;
+
+    flex-direction: column;
+  }
+
+  .employer-job-actions
+    .job-delete-button {
+    width: 100%;
+  }
+}

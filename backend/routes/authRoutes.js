@@ -10,11 +10,16 @@ const {
   changePassword,
   refreshAccessToken,
   verifyEmail,
+  resendVerificationEmail,
 } = require("../controllers/authController");
 
 const protect = require("../middleware/authMiddleware");
 
 const router = express.Router();
+
+// ==========================================
+// AUTH
+// ==========================================
 
 router.post(
   "/register",
@@ -26,6 +31,10 @@ router.post(
   loginUser
 );
 
+// ==========================================
+// PASSWORD
+// ==========================================
+
 router.post(
   "/forgot-password",
   forgotPassword
@@ -35,6 +44,10 @@ router.post(
   "/reset-password/:token",
   resetPassword
 );
+
+// ==========================================
+// OTP
+// ==========================================
 
 router.post(
   "/send-otp",
@@ -46,21 +59,42 @@ router.post(
   verifyOTP
 );
 
+// ==========================================
+// CHANGE PASSWORD
+// ==========================================
+
 router.put(
   "/change-password",
   protect,
   changePassword
 );
 
+// ==========================================
+// REFRESH TOKEN
+// ==========================================
+
 router.post(
   "/refresh-token",
   refreshAccessToken
 );
 
+// ==========================================
+// EMAIL VERIFICATION
+// ==========================================
+
 router.get(
   "/verify-email/:token",
   verifyEmail
 );
+
+router.post(
+  "/resend-verification",
+  resendVerificationEmail
+);
+
+// ==========================================
+// PROTECTED PROFILE TEST ROUTE
+// ==========================================
 
 router.get(
   "/profile",

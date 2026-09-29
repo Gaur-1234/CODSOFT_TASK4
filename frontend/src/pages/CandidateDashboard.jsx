@@ -6,20 +6,28 @@ import ApplicationStats from "../components/ApplicationStats";
 import SavedJobs from "../components/SavedJobs";
 
 function CandidateDashboard() {
-  const [applications, setApplications] = useState([]);
-  const [loading, setLoading] = useState(true);
-  const [error, setError] = useState("");
+  const [applications, setApplications] =
+    useState([]);
+
+  const [loading, setLoading] =
+    useState(true);
+
+  const [error, setError] =
+    useState("");
 
   useEffect(() => {
     let cancelled = false;
 
     const loadApplications = async () => {
       try {
-        const response = await API.get(
-          "/applications/my-applications"
-        );
+        const response =
+          await API.get(
+            "/applications/my-applications"
+          );
 
-        if (cancelled) return;
+        if (cancelled) {
+          return;
+        }
 
         setApplications(
           response.data?.applications ||
@@ -27,7 +35,9 @@ function CandidateDashboard() {
             []
         );
       } catch (err) {
-        if (cancelled) return;
+        if (cancelled) {
+          return;
+        }
 
         console.error(
           "Candidate applications error:",
@@ -52,10 +62,6 @@ function CandidateDashboard() {
     };
   }, []);
 
-  // ==========================================
-  // STATUS CLASS
-  // ==========================================
-
   const getStatusClass = (status) => {
     switch (status) {
       case "Applied":
@@ -79,8 +85,53 @@ function CandidateDashboard() {
   };
 
   // ==========================================
-  // LOADING
+  // WITHDRAW APPLICATION
   // ==========================================
+
+  const handleWithdraw = async (
+    applicationId
+  ) => {
+    const confirmed =
+      window.confirm(
+        "Are you sure you want to withdraw this application?"
+      );
+
+    if (!confirmed) {
+      return;
+    }
+
+    try {
+      setError("");
+
+      await API.patch(
+        `/applications/${applicationId}/withdraw`
+      );
+
+      setApplications(
+        (previousApplications) =>
+          previousApplications.map(
+            (application) =>
+              application._id ===
+              applicationId
+                ? {
+                    ...application,
+                    status: "Withdrawn",
+                  }
+                : application
+          )
+      );
+    } catch (err) {
+      console.error(
+        "Withdraw application error:",
+        err
+      );
+
+      setError(
+        err.response?.data?.message ||
+          "Unable to withdraw application."
+      );
+    }
+  };
 
   if (loading) {
     return (
@@ -98,8 +149,8 @@ function CandidateDashboard() {
             </h1>
 
             <p>
-              Please wait while we load your
-              application data.
+              Please wait while we load
+              your application data.
             </p>
 
           </div>
@@ -109,11 +160,7 @@ function CandidateDashboard() {
     );
   }
 
-  // ==========================================
-  // ERROR
-  // ==========================================
-
-  if (error) {
+  if (error && applications.length === 0) {
     return (
       <main className="dashboard-page">
         <div className="dashboard-container">
@@ -128,14 +175,14 @@ function CandidateDashboard() {
               Unable to Load Dashboard
             </h1>
 
-            <p>
-              {error}
-            </p>
+            <p>{error}</p>
 
             <button
               type="button"
               className="dashboard-primary-button"
-              onClick={() => window.location.reload()}
+              onClick={() =>
+                window.location.reload()
+              }
             >
               Try Again
             </button>
@@ -152,8 +199,6 @@ function CandidateDashboard() {
 
       <div className="dashboard-container">
 
-        {/* HEADER */}
-
         <section className="dashboard-header">
 
           <div>
@@ -167,9 +212,9 @@ function CandidateDashboard() {
             </h1>
 
             <p>
-              Track your applications, manage
-              saved jobs and keep your profile
-              up to date.
+              Track your applications,
+              manage saved jobs and keep
+              your profile up to date.
             </p>
 
           </div>
@@ -194,7 +239,11 @@ function CandidateDashboard() {
 
         </section>
 
-        {/* APPLICATION STATISTICS */}
+        {error && (
+          <div className="dashboard-error">
+            <p>{error}</p>
+          </div>
+        )}
 
         <section className="dashboard-section">
 
@@ -207,8 +256,8 @@ function CandidateDashboard() {
               </h2>
 
               <p>
-                See the current status of your
-                job applications.
+                See the current status
+                of your job applications.
               </p>
 
             </div>
@@ -216,14 +265,10 @@ function CandidateDashboard() {
           </div>
 
           <div className="dashboard-card">
-
             <ApplicationStats />
-
           </div>
 
         </section>
-
-        {/* MY APPLICATIONS */}
 
         <section className="dashboard-section">
 
@@ -236,8 +281,9 @@ function CandidateDashboard() {
               </h2>
 
               <p>
-                Review the jobs you have applied
-                for and their current status.
+                Review the jobs you have
+                applied for and their
+                current status.
               </p>
 
             </div>
@@ -252,9 +298,11 @@ function CandidateDashboard() {
               </h3>
 
               <p>
-                You haven't applied for any jobs
-                yet. Explore available opportunities
-                and submit your first application.
+                You haven't applied for
+                any jobs yet. Explore
+                available opportunities
+                and submit your first
+                application.
               </p>
 
               <Link
@@ -268,99 +316,121 @@ function CandidateDashboard() {
           ) : (
             <div className="applications-list">
 
-              {applications.map((application) => {
+              {applications.map(
+                (application) => {
+                  const job =
+                    application.job || {};
 
-                const job =
-                  application.job || {};
+                  const company =
+                    job.company ||
+                    job.employer?.companyName ||
+                    "Company";
 
-                const company =
-                  job.company ||
-                  job.employer?.companyName ||
-                  "Company";
+                  return (
+                    <article
+                      className="application-card"
+                      key={
+                        application._id ||
+                        application.id
+                      }
+                    >
 
-                return (
-                  <article
-                    className="application-card"
-                    key={
-                      application._id ||
-                      application.id
-                    }
-                  >
+                      <div className="application-card-content">
 
-                    <div className="application-card-content">
+                        <div>
 
-                      <div>
+                          <h3>
+                            {job.title ||
+                              "Job Position"}
+                          </h3>
 
-                        <h3>
-                          {job.title ||
-                            "Job Position"}
-                        </h3>
-
-                        <p className="application-company">
-                          {company}
-                        </p>
-
-                        {job.location && (
-                          <p>
-                            📍 {job.location}
+                          <p className="application-company">
+                            {company}
                           </p>
-                        )}
 
-                        {job.jobType && (
-                          <p>
-                            💼 {job.jobType}
-                          </p>
-                        )}
+                          {job.location && (
+                            <p>
+                              📍{" "}
+                              {job.location}
+                            </p>
+                          )}
 
-                      </div>
+                          {job.jobType && (
+                            <p>
+                              💼{" "}
+                              {job.jobType}
+                            </p>
+                          )}
 
-                      <span
-                        className={getStatusClass(
-                          application.status
-                        )}
-                      >
-                        {application.status ||
-                          "Applied"}
-                      </span>
+                        </div>
 
-                    </div>
-
-                    <div className="application-card-footer">
-
-                      <div>
-
-                        {application.createdAt && (
-                          <small>
-                            Applied on{" "}
-                            {new Date(
-                              application.createdAt
-                            ).toLocaleDateString()}
-                          </small>
-                        )}
-
-                      </div>
-
-                      {job._id && (
-                        <Link
-                          to={`/jobs/${job._id}`}
-                          className="dashboard-secondary-button"
+                        <span
+                          className={getStatusClass(
+                            application.status
+                          )}
                         >
-                          View Job
-                        </Link>
-                      )}
+                          {application.status ||
+                            "Applied"}
+                        </span>
 
-                    </div>
+                      </div>
 
-                  </article>
-                );
-              })}
+                      <div className="application-card-footer">
+
+                        <div>
+
+                          {application.createdAt && (
+                            <small>
+                              Applied on{" "}
+                              {new Date(
+                                application.createdAt
+                              ).toLocaleDateString()}
+                            </small>
+                          )}
+
+                        </div>
+
+                        <div className="application-card-actions">
+
+                          {job._id && (
+                            <Link
+                              to={`/jobs/${job._id}`}
+                              className="dashboard-secondary-button"
+                            >
+                              View Job
+                            </Link>
+                          )}
+
+                          {(application.status ===
+                            "Applied" ||
+                            application.status ===
+                              "Under Review") && (
+                            <button
+                              type="button"
+                              className="withdraw-application-button"
+                              onClick={() =>
+                                handleWithdraw(
+                                  application._id
+                                )
+                              }
+                            >
+                              Withdraw Application
+                            </button>
+                          )}
+
+                        </div>
+
+                      </div>
+
+                    </article>
+                  );
+                }
+              )}
 
             </div>
           )}
 
         </section>
-
-        {/* SAVED JOBS */}
 
         <section className="dashboard-section">
 
@@ -389,14 +459,10 @@ function CandidateDashboard() {
           </div>
 
           <div className="dashboard-card">
-
             <SavedJobs />
-
           </div>
 
         </section>
-
-        {/* QUICK ACTIONS */}
 
         <section className="dashboard-section">
 
@@ -409,8 +475,8 @@ function CandidateDashboard() {
               </h2>
 
               <p>
-                Manage your candidate account
-                from one place.
+                Manage your candidate
+                account from one place.
               </p>
 
             </div>
@@ -428,8 +494,8 @@ function CandidateDashboard() {
               </h3>
 
               <p>
-                Search and explore available
-                job opportunities.
+                Search and explore
+                available job opportunities.
               </p>
             </Link>
 
@@ -442,8 +508,8 @@ function CandidateDashboard() {
               </h3>
 
               <p>
-                Keep your professional information
-                updated.
+                Keep your professional
+                information updated.
               </p>
             </Link>
 
@@ -456,8 +522,9 @@ function CandidateDashboard() {
               </h3>
 
               <p>
-                Update your account password
-                and security settings.
+                Update your account
+                password and security
+                settings.
               </p>
             </Link>
 

@@ -11,25 +11,17 @@ function ProfileForm({
 }) {
   const isEmployer = mode === "employer";
 
-  // ==========================================
-  // FORM DATA
-  // ==========================================
-
   const [formData, setFormData] = useState({
     name: "",
     email: "",
     phone: "",
     location: "",
-
-    // Candidate
     skills: "",
     education: "",
     experience: "",
     linkedin: "",
     github: "",
     portfolio: "",
-
-    // Employer
     companyName: "",
     companyWebsite: "",
     industry: "",
@@ -38,17 +30,9 @@ function ProfileForm({
     companyLinkedin: "",
   });
 
-  // ==========================================
-  // IMAGE STATES
-  // ==========================================
-
   const [photo, setPhoto] = useState(null);
   const [photoPreview, setPhotoPreview] =
     useState("");
-
-  // ==========================================
-  // LOADING / MESSAGE
-  // ==========================================
 
   const [loading, setLoading] = useState(false);
   const [photoLoading, setPhotoLoading] =
@@ -56,10 +40,6 @@ function ProfileForm({
 
   const [message, setMessage] = useState("");
   const [error, setError] = useState("");
-
-  // ==========================================
-  // SYNC PROFILE DATA
-  // ==========================================
 
   useEffect(() => {
     const updatedFormData = {
@@ -94,22 +74,16 @@ function ProfileForm({
         profile?.companyLinkedin || "",
     };
 
-    // Profile data comes from API asynchronously.
-    // Syncing form state with loaded profile is intentional.
+    // Profile is loaded asynchronously from the API.
     // eslint-disable-next-line react-hooks/set-state-in-effect
     setFormData(updatedFormData);
   }, [profile]);
-
-  // ==========================================
-  // IMAGE URL
-  // ==========================================
 
   const getImageUrl = (fileId) => {
     if (!fileId) {
       return "";
     }
 
-    // If already a complete URL
     if (
       typeof fileId === "string" &&
       fileId.startsWith("http")
@@ -117,16 +91,12 @@ function ProfileForm({
       return fileId;
     }
 
-    // GridFS image
     return `${BASE_URL}/api/media/${fileId}`;
   };
 
-  // ==========================================
-  // FORM CHANGE
-  // ==========================================
-
-  const handleChange = (e) => {
-    const { name, value } = e.target;
+  const handleChange = (event) => {
+    const { name, value } =
+      event.target;
 
     setFormData((previous) => ({
       ...previous,
@@ -134,12 +104,8 @@ function ProfileForm({
     }));
   };
 
-  // ==========================================
-  // SAVE PROFILE
-  // ==========================================
-
-  const handleSubmit = async (e) => {
-    e.preventDefault();
+  const handleSubmit = async (event) => {
+    event.preventDefault();
 
     setLoading(true);
     setMessage("");
@@ -156,12 +122,12 @@ function ProfileForm({
       );
 
       const updatedProfile =
-        response.data.user ||
-        response.data.profile ||
+        response.data?.user ||
+        response.data?.profile ||
         response.data;
 
       setMessage(
-        response.data.message ||
+        response.data?.message ||
           "Profile updated successfully."
       );
 
@@ -181,20 +147,15 @@ function ProfileForm({
     }
   };
 
-  // ==========================================
-  // SELECT IMAGE
-  // ==========================================
-
-  const handlePhotoChange = (e) => {
+  const handlePhotoChange = (event) => {
     const file =
-      e.target.files?.[0] || null;
+      event.target.files?.[0] || null;
 
     setPhoto(file);
     setMessage("");
     setError("");
 
     if (file) {
-      // Show selected image immediately
       setPhotoPreview(
         URL.createObjectURL(file)
       );
@@ -202,10 +163,6 @@ function ProfileForm({
       setPhotoPreview("");
     }
   };
-
-  // ==========================================
-  // UPLOAD IMAGE
-  // ==========================================
 
   const handleUpload = async () => {
     if (!photo) {
@@ -225,8 +182,6 @@ function ProfileForm({
     try {
       const data = new FormData();
 
-      // Candidate -> photo
-      // Employer -> logo
       const fieldName = isEmployer
         ? "logo"
         : "photo";
@@ -243,12 +198,12 @@ function ProfileForm({
       );
 
       const updatedProfile =
-        response.data.user ||
-        response.data.profile ||
+        response.data?.user ||
+        response.data?.profile ||
         response.data;
 
       setMessage(
-        response.data.message ||
+        response.data?.message ||
           (
             isEmployer
               ? "Company logo uploaded successfully."
@@ -256,17 +211,11 @@ function ProfileForm({
           )
       );
 
-      // Update parent profile
       onSaved?.(updatedProfile);
 
-      // Clear selected file
       setPhoto(null);
-
-      // Clear local preview.
-      // Existing GridFS image will now be displayed.
       setPhotoPreview("");
 
-      // Clear file input
       const fileInput =
         document.getElementById(
           isEmployer
@@ -296,10 +245,6 @@ function ProfileForm({
     }
   };
 
-  // ==========================================
-  // DELETE IMAGE
-  // ==========================================
-
   const handleDeletePhoto = async () => {
     setPhotoLoading(true);
     setMessage("");
@@ -315,12 +260,12 @@ function ProfileForm({
       );
 
       const updatedProfile =
-        response.data.user ||
-        response.data.profile ||
+        response.data?.user ||
+        response.data?.profile ||
         response.data;
 
       setMessage(
-        response.data.message ||
+        response.data?.message ||
           (
             isEmployer
               ? "Company logo removed successfully."
@@ -362,10 +307,6 @@ function ProfileForm({
     }
   };
 
-  // ==========================================
-  // FIELDS
-  // ==========================================
-
   const candidateFields = [
     ["name", "Full Name", "text"],
     ["email", "Email", "email"],
@@ -382,7 +323,11 @@ function ProfileForm({
     ["name", "Contact Name", "text"],
     ["email", "Email", "email"],
     ["phone", "Phone", "tel"],
-    ["companyName", "Company Name", "text"],
+    [
+      "companyName",
+      "Company Name",
+      "text",
+    ],
     [
       "companyWebsite",
       "Company Website",
@@ -405,32 +350,16 @@ function ProfileForm({
     ? employerFields
     : candidateFields;
 
-  // ==========================================
-  // EXISTING IMAGE
-  // ==========================================
-
   const existingImage = isEmployer
     ? profile?.companyLogo
     : profile?.profilePhoto;
-
-  // ==========================================
-  // IMAGE URL TO DISPLAY
-  // ==========================================
 
   const displayedImage =
     photoPreview ||
     getImageUrl(existingImage);
 
-  // ==========================================
-  // UI
-  // ==========================================
-
   return (
     <section className="dashboard-section">
-
-      {/* ======================================
-          SECTION HEADER
-      ======================================= */}
 
       <div className="section-heading">
         <div>
@@ -448,19 +377,11 @@ function ProfileForm({
         </div>
       </div>
 
-      {/* ======================================
-          ERROR
-      ======================================= */}
-
       {error && (
         <div className="dashboard-error">
           <p>{error}</p>
         </div>
       )}
-
-      {/* ======================================
-          SUCCESS
-      ======================================= */}
 
       {message && (
         <div className="dashboard-success">
@@ -468,15 +389,10 @@ function ProfileForm({
         </div>
       )}
 
-      {/* ======================================
-          PROFILE FORM
-      ======================================= */}
-
       <form
         onSubmit={handleSubmit}
         className="profile-form"
       >
-
         <div className="profile-form-grid">
 
           {fields.map(
@@ -485,7 +401,6 @@ function ProfileForm({
                 className="form-group"
                 key={name}
               >
-
                 <label htmlFor={name}>
                   {label}
                 </label>
@@ -502,22 +417,15 @@ function ProfileForm({
                     loading ||
                     (
                       name === "email" &&
-                      Boolean(
-                        profile?.email
-                      )
+                      Boolean(profile?.email)
                     )
                   }
                 />
-
               </div>
             )
           )}
 
         </div>
-
-        {/* ====================================
-            CANDIDATE EXTRA FIELDS
-        ===================================== */}
 
         {!isEmployer && (
           <>
@@ -563,10 +471,6 @@ function ProfileForm({
           </>
         )}
 
-        {/* ====================================
-            EMPLOYER COMPANY DESCRIPTION
-        ===================================== */}
-
         {isEmployer && (
           <div className="form-group">
 
@@ -590,10 +494,6 @@ function ProfileForm({
           </div>
         )}
 
-        {/* ====================================
-            SAVE PROFILE
-        ===================================== */}
-
         <button
           type="submit"
           className="dashboard-primary-button"
@@ -605,10 +505,6 @@ function ProfileForm({
         </button>
 
       </form>
-
-      {/* ======================================
-          IMAGE SECTION
-      ======================================= */}
 
       <div className="profile-media-section">
 
@@ -624,10 +520,6 @@ function ProfileForm({
           </p>
         </div>
 
-        {/* ====================================
-            IMAGE PREVIEW
-        ===================================== */}
-
         {displayedImage && (
           <div className="profile-image-preview">
 
@@ -639,13 +531,8 @@ function ProfileForm({
                   : "Profile Photo"
               }
               className="profile-media-image"
-              onError={(e) => {
-                console.error(
-                  "Image failed to load:",
-                  displayedImage
-                );
-
-                e.currentTarget.style.display =
+              onError={(event) => {
+                event.currentTarget.style.display =
                   "none";
               }}
             />
@@ -653,25 +540,42 @@ function ProfileForm({
           </div>
         )}
 
-        {/* ====================================
-            FILE INPUT
-        ===================================== */}
+        <div className="profile-file-picker">
 
-        <input
-          id={
-            isEmployer
-              ? "companyLogoInput"
-              : "profilePhotoInput"
-          }
-          type="file"
-          accept="image/jpeg,image/png,image/webp"
-          onChange={handlePhotoChange}
-          disabled={photoLoading}
-        />
+          <input
+            id={
+              isEmployer
+                ? "companyLogoInput"
+                : "profilePhotoInput"
+            }
+            type="file"
+            accept="image/jpeg,image/png,image/webp"
+            onChange={handlePhotoChange}
+            disabled={photoLoading}
+            className="profile-file-input"
+          />
 
-        {/* ====================================
-            ACTION BUTTONS
-        ===================================== */}
+          <label
+            htmlFor={
+              isEmployer
+                ? "companyLogoInput"
+                : "profilePhotoInput"
+            }
+            className="profile-file-label"
+          >
+            📷 Choose{" "}
+            {isEmployer
+              ? "Company Logo"
+              : "Profile Photo"}
+          </label>
+
+          {photo && (
+            <span className="selected-file-name">
+              {photo.name}
+            </span>
+          )}
+
+        </div>
 
         <div className="profile-media-actions">
 

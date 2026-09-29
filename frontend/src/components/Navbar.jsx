@@ -25,21 +25,14 @@ function Navbar() {
   const isLoggedIn =
     Boolean(accessToken);
 
-  const role = user?.role;
-
-  // ==========================================
-  // LOGOUT
-  // ==========================================
+  // Normalize role so Candidate/candidate
+  // and Employer/employer both work.
+  const role =
+    user?.role?.toLowerCase() || "";
 
   const handleLogout = () => {
-    localStorage.removeItem(
-      "accessToken"
-    );
-
-    localStorage.removeItem(
-      "refreshToken"
-    );
-
+    localStorage.removeItem("accessToken");
+    localStorage.removeItem("refreshToken");
     localStorage.removeItem("user");
 
     navigate("/login");
@@ -47,12 +40,7 @@ function Navbar() {
 
   return (
     <header className="navbar">
-
       <div className="navbar-container">
-
-        {/* ==================================
-            LOGO
-        =================================== */}
 
         <Link
           to="/"
@@ -60,10 +48,6 @@ function Navbar() {
         >
           JobBoard
         </Link>
-
-        {/* ==================================
-            NAVIGATION
-        =================================== */}
 
         <nav className="nav-links">
 
@@ -81,9 +65,7 @@ function Navbar() {
             Jobs
           </Link>
 
-          {/* =================================
-              CANDIDATE NAVIGATION
-          ================================= */}
+          {/* CANDIDATE */}
 
           {isLoggedIn &&
             role === "candidate" && (
@@ -104,9 +86,7 @@ function Navbar() {
               </>
             )}
 
-          {/* =================================
-              EMPLOYER NAVIGATION
-          ================================= */}
+          {/* EMPLOYER */}
 
           {isLoggedIn &&
             role === "employer" && (
@@ -134,9 +114,7 @@ function Navbar() {
               </>
             )}
 
-          {/* =================================
-              AUTH ACTIONS
-          ================================= */}
+          {/* LOGGED OUT */}
 
           {!isLoggedIn && (
             <>
@@ -156,9 +134,7 @@ function Navbar() {
             </>
           )}
 
-          {/* =================================
-              LOGGED-IN USER
-          ================================= */}
+          {/* LOGGED IN */}
 
           {isLoggedIn && (
             <div className="nav-user">
@@ -174,13 +150,11 @@ function Navbar() {
               </div>
 
               <div className="nav-user-info">
-
                 <span className="nav-user-name">
                   {user?.name ||
                     user?.email ||
                     "User"}
                 </span>
-
               </div>
 
               <button
@@ -195,9 +169,7 @@ function Navbar() {
           )}
 
         </nav>
-
       </div>
-
     </header>
   );
 }

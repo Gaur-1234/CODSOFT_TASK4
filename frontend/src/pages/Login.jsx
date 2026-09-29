@@ -1,279 +1,220 @@
 import { useState } from "react";
 import { Link, useNavigate } from "react-router-dom";
-
 import API from "../services/api";
 
 function Login() {
   const navigate = useNavigate();
 
-  const [formData, setFormData] = useState({
-    email: "",
-    password: "",
-  });
+  const [email, setEmail] = useState("");
+  const [password, setPassword] = useState("");
 
-  const [loading, setLoading] = useState(false);
   const [error, setError] = useState("");
+  const [loading, setLoading] = useState(false);
 
-  // ==========================================
-  // HANDLE INPUT CHANGE
-  // ==========================================
+  // Resend verification email states
+  const [resendLoading, setResendLoading] = useState(false);
+  const [resendMessage, setResendMessage] = useState("");
 
-  const handleChange = (event) => {
-    const { name, value } = event.target;
-
-    setFormData((previous) => ({
-      ...previous,
-      [name]: value,
-    }));
-
-    if (error) {
-      setError("");
-    }
-  };
-
-  // ==========================================
-  // HANDLE LOGIN
-  // ==========================================
-
-  const handleSubmit = async (event) => {
+  const handleLogin = async (event) => {
     event.preventDefault();
 
     setError("");
+    setResendMessage("");
 
-    const email = formData.email.trim();
-    const password = formData.password;
-
-    if (!email) {
-      setError("Please enter your email.");
-      return;
-    }
-
-    if (!password) {
-      setError("Please enter your password.");
+    if (!email.trim() || !password) {
+      setError("Please enter your email and password.");
       return;
     }
 
     try {
       setLoading(true);
 
-      const response = await API.post(
-        "/auth/login",
-        {
-          email,
-          password,
-        }
-      );
+      const response = await API.post("/auth/login", {
+        email: email.trim(),
+        password,
+      });
 
       const {
         accessToken,
         refreshToken,
         user,
-      } = response.data || {};
+      } = response.data;
 
-      // Make sure the backend returned the
-      // required authentication data.
-      if (!accessToken || !refreshToken || !user) {
-        setError(
-          "Login response is incomplete. Please try again."
-        );
-        return;
+      // Store authentication details
+      localStorage.setItem("accessToken", accessToken);
+      localStorage.setItem("refreshToken", refreshToken);
+      localStorage.setItem("user", JSON.stringify(user));
+
+      // Redirect based on role
+      if (user?.role === "Employer") {
+        navigate("/employer-dashboard");
+      } else {
+        navigate("/candidate-dashboard");
       }
-
-      // ======================================
-      // STORE AUTH DATA
-      // ======================================
-
-      localStorage.setItem(
-        "accessToken",
-        accessToken
-      );
-
-      localStorage.setItem(
-        "refreshToken",
-        refreshToken
-      );
-
-      localStorage.setItem(
-        "user",
-        JSON.stringify(user)
-      );
-
-      // ======================================
-      // ROLE BASED REDIRECT
-      // ======================================
-
-      if (user.role === "Employer") {
-        navigate("/employer-dashboard", {
-          replace: true,
-        });
-        return;
-      }
-
-      if (user.role === "Candidate") {
-        navigate("/candidate-dashboard", {
-          replace: true,
-        });
-        return;
-      }
-
-      // Unknown role
-      localStorage.removeItem("accessToken");
-      localStorage.removeItem("refreshToken");
-      localStorage.removeItem("user");
+    } catch (error) {
+      console.error("Login error:", error);
 
       setError(
-        "Your account role is not recognized."
-      );
-    } catch (err) {
-      console.error("Login error:", err);
-
-      setError(
-        err.response?.data?.message ||
-          "Login failed. Please check your email and password."
+        error.response?.data?.message ||
+          "Unable to login. Please check your credentials."
       );
     } finally {
       setLoading(false);
     }
   };
 
-  // ==========================================
-  // PAGE
-  // ==========================================
+  const handleResendVerification = async () => {
+    if (!email.trim()) {
+      setError("Please enter your email address first.");
+      return;
+    }
+
+    try {
+      setResendLoading(true);
+      setResendMessage("");
+      setError("");
+
+      const response = await API.post(
+        "/auth/resend-verification",
+        {
+          email: email.trim(),
+        }
+      );
+
+      setResendMessage(
+        response.data?.message ||
+          "Verification email sent successfully."
+      );
+    } catch (error) {
+      console.error(
+        "Resend verification error:",
+        error
+      );
+
+      setError(
+        error.response?.data?.message ||
+          "Unable to resend verification email."
+      );
+    } finally {
+      setResendLoading(false);
+    }
+  };
 
   return (
-    <main className="auth-page">
+    <main className="page-container">
+      <section className="auth-page">
+        <div className="auth-card">
+          <div className="auth-header">
+            <span className="auth-eyebrow">
+              Welcome Back
+            </span>
 
-      <div className="auth-card">
+            <h1>Login to JobBoard</h1>
 
-        {/* ====================================
-            HEADER
-        ===================================== */}
+            <p>
+              Sign in to continue managing your jobs
+              and applications.
+            </p>
+          </div>
 
-        <div className="auth-header">
+          {error && (
+            <div className="auth-error">
+              {error}
+            </div>
+          )}
 
-          <span className="dashboard-eyebrow">
-            Welcome Back
-          </span>
-
-          <h1>
-            Login to JobBoard
-          </h1>
-
-          <p>
-            Sign in to access your account and
-            continue using JobBoard.
-          </p>
-
-        </div>
-
-        {/* ====================================
-            ERROR
-        ===================================== */}
-
-        {error && (
-          <div
-            className="auth-error"
-            role="alert"
+          <form
+            className="auth-form"
+            onSubmit={handleLogin}
           >
-            {error}
-          </div>
-        )}
+            <div className="form-group">
+              <label htmlFor="email">
+                Email Address
+              </label>
 
-        {/* ====================================
-            LOGIN FORM
-        ===================================== */}
+              <input
+                id="email"
+                type="email"
+                value={email}
+                onChange={(event) =>
+                  setEmail(event.target.value)
+                }
+                placeholder="Enter your email"
+                autoComplete="email"
+                required
+              />
+            </div>
 
-        <form
-          onSubmit={handleSubmit}
-          className="auth-form"
-        >
+            <div className="form-group">
+              <div className="password-label-row">
+                <label htmlFor="password">
+                  Password
+                </label>
 
-          {/* Email */}
+                <Link
+                  to="/forgot-password"
+                  className="forgot-password-link"
+                >
+                  Forgot Password?
+                </Link>
+              </div>
 
-          <div className="form-group">
+              <input
+                id="password"
+                type="password"
+                value={password}
+                onChange={(event) =>
+                  setPassword(event.target.value)
+                }
+                placeholder="Enter your password"
+                autoComplete="current-password"
+                required
+              />
+            </div>
 
-            <label htmlFor="email">
-              Email
-            </label>
-
-            <input
-              id="email"
-              type="email"
-              name="email"
-              placeholder="Enter your email"
-              value={formData.email}
-              onChange={handleChange}
-              autoComplete="email"
+            <button
+              type="submit"
+              className="primary-button auth-submit-button"
               disabled={loading}
-              required
-            />
+            >
+              {loading ? "Logging in..." : "Login"}
+            </button>
+          </form>
 
+          {/* Resend Verification Email */}
+          <div className="verification-resend">
+            <p>
+              Didn't receive the verification email?
+            </p>
+
+            <button
+              type="button"
+              className="resend-verification-button"
+              onClick={handleResendVerification}
+              disabled={resendLoading}
+            >
+              {resendLoading
+                ? "Sending..."
+                : "Resend Verification Email"}
+            </button>
+
+            {resendMessage && (
+              <p className="verification-success">
+                {resendMessage}
+              </p>
+            )}
           </div>
 
-          {/* Password */}
-
-          <div className="form-group">
-
-            <label htmlFor="password">
-              Password
-            </label>
-
-            <input
-              id="password"
-              type="password"
-              name="password"
-              placeholder="Enter your password"
-              value={formData.password}
-              onChange={handleChange}
-              autoComplete="current-password"
-              disabled={loading}
-              required
-            />
-
+          <div className="auth-footer">
+            <p>
+              Don't have an account?{" "}
+              <Link to="/register">
+                Create an account
+              </Link>
+            </p>
           </div>
-
-          {/* Forgot Password */}
-
-          <div className="auth-forgot">
-
-            <Link to="/forgot-password">
-              Forgot Password?
-            </Link>
-
-          </div>
-
-          {/* Login Button */}
-
-          <button
-            type="submit"
-            className="auth-button"
-            disabled={loading}
-          >
-            {loading
-              ? "Logging in..."
-              : "Login"}
-          </button>
-
-        </form>
-
-        {/* ====================================
-            FOOTER
-        ===================================== */}
-
-        <div className="auth-footer">
-
-          <p>
-            Don't have an account?{" "}
-
-            <Link to="/register">
-              Create Account
-            </Link>
-          </p>
-
         </div>
-
-      </div>
-
+      </section>
     </main>
   );
 }

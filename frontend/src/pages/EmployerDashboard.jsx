@@ -25,13 +25,20 @@ function EmployerDashboard() {
   });
 
   const [loading, setLoading] = useState(true);
-  const [statsLoading, setStatsLoading] = useState(true);
+  const [statsLoading, setStatsLoading] =
+    useState(true);
 
   const [error, setError] = useState("");
-  const [statsError, setStatsError] = useState("");
+  const [statsError, setStatsError] =
+    useState("");
 
-  const [selectedJob, setSelectedJob] = useState(null);
+  const [selectedJob, setSelectedJob] =
+    useState(null);
+
   const [applicantLoading, setApplicantLoading] =
+    useState("");
+
+  const [deleteLoading, setDeleteLoading] =
     useState("");
 
   let user = null;
@@ -190,6 +197,80 @@ function EmployerDashboard() {
   };
 
   // ==========================================
+  // DELETE JOB
+  // ==========================================
+
+  const deleteJob = async (jobId) => {
+    const job = jobs.find(
+      (item) => item._id === jobId
+    );
+
+    const jobTitle =
+      job?.title || "this job";
+
+    const confirmed = window.confirm(
+      `Are you sure you want to delete "${jobTitle}"? This action cannot be undone.`
+    );
+
+    if (!confirmed) {
+      return;
+    }
+
+    try {
+      setDeleteLoading(jobId);
+      setError("");
+
+      await API.delete(
+        `/jobs/${jobId}`
+      );
+
+      setJobs((previousJobs) =>
+        previousJobs.filter(
+          (item) => item._id !== jobId
+        )
+      );
+
+      setJobStats((previousStats) => {
+        const updatedStats = {
+          ...previousStats,
+        };
+
+        delete updatedStats[jobId];
+
+        return updatedStats;
+      });
+
+      setApplicants((previousApplicants) => {
+        const updatedApplicants = {
+          ...previousApplicants,
+        };
+
+        delete updatedApplicants[jobId];
+
+        return updatedApplicants;
+      });
+
+      if (selectedJob === jobId) {
+        setSelectedJob(null);
+      }
+
+      await fetchEmployerStats();
+    } catch (err) {
+      console.error(
+        "Delete job error:",
+        err
+      );
+
+      setError(
+        err.response?.data?.message ||
+          "Unable to delete job."
+      );
+    } finally {
+      setDeleteLoading("");
+    }
+  };
+
+  // ==========================================
   // FETCH APPLICANTS
   // ==========================================
 
@@ -297,7 +378,6 @@ function EmployerDashboard() {
         document.createElement("a");
 
       link.href = url;
-
       link.download =
         fileName || "resume";
 
@@ -402,9 +482,7 @@ function EmployerDashboard() {
 
       <div className="dashboard-container">
 
-        {/* ====================================
-            HEADER
-        ===================================== */}
+        {/* HEADER */}
 
         <section className="dashboard-header">
 
@@ -456,9 +534,7 @@ function EmployerDashboard() {
 
         </section>
 
-        {/* ====================================
-            ERROR
-        ===================================== */}
+        {/* ERROR */}
 
         {error && (
           <div className="dashboard-error">
@@ -488,9 +564,7 @@ function EmployerDashboard() {
           </div>
         )}
 
-        {/* ====================================
-            EMPLOYER OVERVIEW
-        ===================================== */}
+        {/* EMPLOYER OVERVIEW */}
 
         <section className="dashboard-section">
 
@@ -519,8 +593,6 @@ function EmployerDashboard() {
 
           <div className="stats-grid">
 
-            {/* TOTAL JOBS */}
-
             <div className="stat-card">
 
               <span className="stat-icon">
@@ -542,8 +614,6 @@ function EmployerDashboard() {
               </div>
 
             </div>
-
-            {/* OPEN JOBS */}
 
             <div className="stat-card">
 
@@ -567,8 +637,6 @@ function EmployerDashboard() {
 
             </div>
 
-            {/* CLOSED JOBS */}
-
             <div className="stat-card">
 
               <span className="stat-icon">
@@ -590,8 +658,6 @@ function EmployerDashboard() {
               </div>
 
             </div>
-
-            {/* APPLICATIONS */}
 
             <div className="stat-card">
 
@@ -619,9 +685,7 @@ function EmployerDashboard() {
 
         </section>
 
-        {/* ====================================
-            JOB LISTINGS
-        ===================================== */}
+        {/* JOB LISTINGS */}
 
         <section className="dashboard-section">
 
@@ -648,8 +712,6 @@ function EmployerDashboard() {
             </span>
 
           </div>
-
-          {/* EMPTY */}
 
           {!error &&
             jobs.length === 0 && (
@@ -682,8 +744,6 @@ function EmployerDashboard() {
               </div>
             )}
 
-          {/* JOB LIST */}
-
           {jobs.length > 0 && (
             <div className="employer-jobs-list">
 
@@ -701,9 +761,7 @@ function EmployerDashboard() {
                     key={job._id}
                   >
 
-                    {/* ==================================
-                        JOB HEADER
-                    =================================== */}
+                    {/* JOB HEADER */}
 
                     <div className="employer-job-header">
 
@@ -769,9 +827,7 @@ function EmployerDashboard() {
 
                     </div>
 
-                    {/* ==================================
-                        JOB DETAILS
-                    =================================== */}
+                    {/* JOB DETAILS */}
 
                     <div className="application-details">
 
@@ -841,9 +897,7 @@ function EmployerDashboard() {
 
                     </div>
 
-                    {/* ==================================
-                        JOB STATS
-                    =================================== */}
+                    {/* JOB STATS */}
 
                     <div className="job-mini-stats">
 
@@ -889,9 +943,7 @@ function EmployerDashboard() {
 
                     </div>
 
-                    {/* ==================================
-                        ACTIONS
-                    =================================== */}
+                    {/* ACTIONS */}
 
                     <div className="employer-job-actions">
 
@@ -926,8 +978,6 @@ function EmployerDashboard() {
                         View Job
                       </button>
 
-                      {/* CLOSE / REOPEN */}
-
                       {job.status ===
                       "Closed" ? (
                         <button
@@ -957,11 +1007,28 @@ function EmployerDashboard() {
                         </button>
                       )}
 
+                      {/* DELETE JOB */}
+
+                      <button
+                        type="button"
+                        className="job-delete-button"
+                        disabled={
+                          deleteLoading ===
+                          job._id
+                        }
+                        onClick={() =>
+                          deleteJob(job._id)
+                        }
+                      >
+                        {deleteLoading ===
+                        job._id
+                          ? "Deleting..."
+                          : "Delete Job"}
+                      </button>
+
                     </div>
 
-                    {/* ==================================
-                        APPLICANTS
-                    =================================== */}
+                    {/* APPLICANTS */}
 
                     {selectedJob ===
                       job._id &&
@@ -1010,8 +1077,6 @@ function EmployerDashboard() {
 
                           </div>
 
-                          {/* NO APPLICANTS */}
-
                           {applicants[
                             job._id
                           ].length === 0 ? (
@@ -1023,15 +1088,12 @@ function EmployerDashboard() {
                               job._id
                             ].map(
                               (application) => (
-
                                 <div
                                   className="applicant-card"
                                   key={
                                     application._id
                                   }
                                 >
-
-                                  {/* CANDIDATE */}
 
                                   <div>
 
@@ -1062,8 +1124,6 @@ function EmployerDashboard() {
                                     )}
 
                                   </div>
-
-                                  {/* STATUS */}
 
                                   <div className="applicant-controls">
 
@@ -1119,8 +1179,6 @@ function EmployerDashboard() {
 
                                   </div>
 
-                                  {/* RESUME */}
-
                                   {application.resume && (
                                     <div className="applicant-resume">
 
@@ -1164,7 +1222,6 @@ function EmployerDashboard() {
                                   )}
 
                                 </div>
-
                               )
                             )
                           )}

@@ -16,15 +16,27 @@ function CandidateProfile() {
 
     const loadProfile = async () => {
       try {
-        const response = await API.get("/profile");
+        const response =
+          await API.get("/profile");
 
-        if (cancelled) return;
+        if (cancelled) {
+          return;
+        }
 
-        setProfile(response.data);
+        setProfile(
+          response.data?.user ||
+            response.data?.profile ||
+            response.data
+        );
       } catch (err) {
-        if (cancelled) return;
+        if (cancelled) {
+          return;
+        }
 
-        console.error("Candidate profile error:", err);
+        console.error(
+          "Candidate profile error:",
+          err
+        );
 
         setError(
           err.response?.data?.message ||
@@ -44,9 +56,45 @@ function CandidateProfile() {
     };
   }, []);
 
-  // ==========================================
-  // LOADING
-  // ==========================================
+  const handleSaved = (updatedProfile) => {
+    setProfile(updatedProfile);
+
+    try {
+      const storedUser =
+        JSON.parse(
+          localStorage.getItem("user") ||
+            "null"
+        );
+
+      if (storedUser) {
+        localStorage.setItem(
+          "user",
+          JSON.stringify({
+            ...storedUser,
+            name:
+              updatedProfile?.name ||
+              storedUser.name,
+            email:
+              updatedProfile?.email ||
+              storedUser.email,
+            profilePhoto:
+              updatedProfile?.profilePhoto ||
+              storedUser.profilePhoto ||
+              "",
+          })
+        );
+
+        window.dispatchEvent(
+          new Event("profileUpdated")
+        );
+      }
+    } catch (error) {
+      console.error(
+        "Failed to update local user:",
+        error
+      );
+    }
+  };
 
   if (loading) {
     return (
@@ -57,20 +105,19 @@ function CandidateProfile() {
               Candidate Profile
             </span>
 
-            <h1>Loading Profile...</h1>
+            <h1>
+              Loading Profile...
+            </h1>
 
             <p>
-              Please wait while we load your profile.
+              Please wait while we load
+              your profile.
             </p>
           </div>
         </div>
       </main>
     );
   }
-
-  // ==========================================
-  // ERROR
-  // ==========================================
 
   if (error) {
     return (
@@ -81,14 +128,18 @@ function CandidateProfile() {
               Candidate Profile
             </span>
 
-            <h1>Unable to Load Profile</h1>
+            <h1>
+              Unable to Load Profile
+            </h1>
 
             <p>{error}</p>
 
             <button
               type="button"
               className="dashboard-primary-button"
-              onClick={() => window.location.reload()}
+              onClick={() =>
+                window.location.reload()
+              }
             >
               Try Again
             </button>
@@ -102,8 +153,6 @@ function CandidateProfile() {
     <main className="dashboard-page">
       <div className="dashboard-container">
 
-        {/* PAGE HEADER */}
-
         <section className="dashboard-header">
 
           <div>
@@ -114,8 +163,9 @@ function CandidateProfile() {
             <h1>My Profile</h1>
 
             <p>
-              Manage your personal information,
-              professional details and job activity.
+              Manage your personal
+              information, professional
+              details and job activity.
             </p>
           </div>
 
@@ -136,18 +186,15 @@ function CandidateProfile() {
             </Link>
 
           </div>
-
         </section>
-
-        {/* PROFILE */}
 
         <section className="dashboard-section">
 
           <div className="section-heading">
-
             <div>
               <h2>
-                Personal & Professional Details
+                Personal & Professional
+                Details
               </h2>
 
               <p>
@@ -155,47 +202,39 @@ function CandidateProfile() {
                 updated for employers.
               </p>
             </div>
-
           </div>
 
           <div className="dashboard-card">
 
             <ProfileForm
               mode="candidate"
-              initialData={profile}
+              profile={profile || {}}
+              onSaved={handleSaved}
             />
 
           </div>
-
         </section>
-
-        {/* APPLICATION STATISTICS */}
 
         <section className="dashboard-section">
 
           <div className="section-heading">
-
             <div>
               <h2>
                 Application Statistics
               </h2>
 
               <p>
-                Track your job application activity.
+                Track your job application
+                activity.
               </p>
             </div>
-
           </div>
 
           <div className="dashboard-card">
-
             <ApplicationStats />
-
           </div>
 
         </section>
-
-        {/* SAVED JOBS */}
 
         <section className="dashboard-section">
 
@@ -219,9 +258,7 @@ function CandidateProfile() {
           </div>
 
           <div className="dashboard-card">
-
             <SavedJobs />
-
           </div>
 
         </section>
